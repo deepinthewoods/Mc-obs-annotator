@@ -38,7 +38,14 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	
+
+	// WebSocket client for OBS communication
+	implementation 'org.java-websocket:Java-WebSocket:1.5.4'
+	include 'org.java-websocket:Java-WebSocket:1.5.4'
+
+	// JSON library for WebSocket messages
+	implementation 'com.google.code.gson:gson:2.10.1'
+	include 'com.google.code.gson:gson:2.10.1'
 }
 
 processResources {
