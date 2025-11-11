@@ -11,11 +11,26 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class ObsWebSocketClient extends WebSocketClient {
     private static final Gson GSON = new Gson();
+    private static final int INITIAL_RECONNECT_DELAY_MS = 2000; // 2 seconds
+    private static final int MAX_RECONNECT_DELAY_MS = 60000; // 60 seconds
+    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
     private final ObsAnnotatorConfig config;
     private boolean authenticated = false;
+    private int reconnectAttempts = 0;
+    private ScheduledFuture<?> reconnectTask = null;
+    private ReconnectCallback reconnectCallback = null;
+
+    public interface ReconnectCallback {
+        void onReconnect();
+    }
 
     public ObsWebSocketClient(ObsAnnotatorConfig config) throws Exception {
         super(new URI("ws://" + config.obsHost + ":" + config.obsPort));
@@ -23,9 +38,14 @@ public class ObsWebSocketClient extends WebSocketClient {
         this.setConnectionLostTimeout(10);
     }
 
+    public void setReconnectCallback(ReconnectCallback callback) {
+        this.reconnectCallback = callback;
+    }
+
     @Override
     public void onOpen(ServerHandshake handshake) {
         System.out.println("[OBS Annotator] Connected to OBS WebSocket");
+        reconnectAttempts = 0; // Reset reconnect attempts on successful connection
     }
 
     @Override
@@ -93,11 +113,46 @@ public class ObsWebSocketClient extends WebSocketClient {
     public void onClose(int code, String reason, boolean remote) {
         authenticated = false;
         System.out.println("[OBS Annotator] Disconnected from OBS: " + reason);
+        scheduleReconnect();
     }
 
     @Override
     public void onError(Exception ex) {
         System.err.println("[OBS Annotator] WebSocket error: " + ex.getMessage());
+        scheduleReconnect();
+    }
+
+    private void scheduleReconnect() {
+        // Don't schedule if already scheduled or if closed intentionally
+        if (reconnectTask != null && !reconnectTask.isDone()) {
+            return;
+        }
+
+        // Calculate delay with exponential backoff
+        int delay = Math.min(
+            INITIAL_RECONNECT_DELAY_MS * (int) Math.pow(2, reconnectAttempts),
+            MAX_RECONNECT_DELAY_MS
+        );
+
+        reconnectAttempts++;
+        System.out.println("[OBS Annotator] Reconnecting in " + (delay / 1000) + " seconds (attempt " + reconnectAttempts + ")");
+
+        reconnectTask = scheduler.schedule(() -> {
+            try {
+                if (reconnectCallback != null) {
+                    reconnectCallback.onReconnect();
+                }
+            } catch (Exception e) {
+                System.err.println("[OBS Annotator] Reconnection failed: " + e.getMessage());
+            }
+        }, delay, TimeUnit.MILLISECONDS);
+    }
+
+    public void cancelReconnect() {
+        if (reconnectTask != null && !reconnectTask.isDone()) {
+            reconnectTask.cancel(false);
+            reconnectTask = null;
+        }
     }
 
     public void sendAnnotation(String annotationText) {

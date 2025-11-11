@@ -7,10 +7,13 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 
 public class ObsAnnotatorConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("obsannotator.json");
+
+    private static FileTime lastModifiedTime = null;
 
     // OBS WebSocket Connection Settings
     public String obsHost = "localhost";
@@ -65,6 +68,7 @@ public class ObsAnnotatorConfig {
     public static ObsAnnotatorConfig load() {
         if (Files.exists(CONFIG_PATH)) {
             try {
+                lastModifiedTime = Files.getLastModifiedTime(CONFIG_PATH);
                 String json = Files.readString(CONFIG_PATH);
                 return GSON.fromJson(json, ObsAnnotatorConfig.class);
             } catch (IOException e) {
@@ -75,6 +79,11 @@ public class ObsAnnotatorConfig {
         // Create default config
         ObsAnnotatorConfig config = new ObsAnnotatorConfig();
         config.save();
+        try {
+            lastModifiedTime = Files.getLastModifiedTime(CONFIG_PATH);
+        } catch (IOException e) {
+            // Ignore
+        }
         return config;
     }
 
@@ -85,5 +94,22 @@ public class ObsAnnotatorConfig {
         } catch (IOException e) {
             System.err.println("Failed to save OBS Annotator config: " + e.getMessage());
         }
+    }
+
+    public static boolean hasConfigFileChanged() {
+        if (!Files.exists(CONFIG_PATH)) {
+            return false;
+        }
+
+        try {
+            FileTime currentModifiedTime = Files.getLastModifiedTime(CONFIG_PATH);
+            return lastModifiedTime == null || currentModifiedTime.compareTo(lastModifiedTime) > 0;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    public static Path getConfigPath() {
+        return CONFIG_PATH;
     }
 }
