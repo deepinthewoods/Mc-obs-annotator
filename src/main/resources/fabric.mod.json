@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"id": "obsannotator",
 	"version": "${version}",
-	"name": "obs annotator",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "OBS Annotator",
+	"description": "Automatically sends annotations to StreamUP Chapter Marker Manager for OBS when gameplay events occur. Marks combat, bosses, items, exploration, and more.",
 	"authors": [
-		"Me!"
+		"deepinthewoods"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/deepinthewoods/Mc-obs-annotator",
+		"sources": "https://github.com/deepinthewoods/Mc-obs-annotator"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/obsannotator/icon.png",
