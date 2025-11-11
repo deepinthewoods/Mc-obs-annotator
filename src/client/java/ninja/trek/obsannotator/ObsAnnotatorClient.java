@@ -17,7 +17,7 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 
 	// Keybinding category
 	private static final KeyMapping.Category CATEGORY = KeyMapping.Category.create(
-		ResourceLocation.parse("obsannotator:main")
+		"obsannotator:main"
 	);
 
 	// Keybindings
