@@ -47,9 +47,36 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	private void initWebSocket() {
 		try {
 			WS_CLIENT = new ObsWebSocketClient(CONFIG);
+			WS_CLIENT.setReconnectCallback(this::handleReconnect);
 			WS_CLIENT.connect();
 		} catch (Exception e) {
 			System.err.println("[OBS Annotator] Failed to initialize WebSocket: " + e.getMessage());
+		}
+	}
+
+	private void handleReconnect() {
+		try {
+			// Check if config file has been modified and reload if necessary
+			if (ObsAnnotatorConfig.hasConfigFileChanged()) {
+				System.out.println("[OBS Annotator] Config file changed, reloading settings from " +
+					ObsAnnotatorConfig.getConfigPath());
+				CONFIG = ObsAnnotatorConfig.load();
+			}
+
+			// Close existing client if still open
+			if (WS_CLIENT != null) {
+				WS_CLIENT.cancelReconnect();
+				if (WS_CLIENT.isOpen()) {
+					WS_CLIENT.close();
+				}
+			}
+
+			// Create new client with potentially updated config
+			WS_CLIENT = new ObsWebSocketClient(CONFIG);
+			WS_CLIENT.setReconnectCallback(this::handleReconnect);
+			WS_CLIENT.connect();
+		} catch (Exception e) {
+			System.err.println("[OBS Annotator] Failed to reconnect WebSocket: " + e.getMessage());
 		}
 	}
 
