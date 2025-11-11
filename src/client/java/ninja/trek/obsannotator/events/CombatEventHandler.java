@@ -13,8 +13,7 @@ public class CombatEventHandler {
     public static void register() {
         // Entity attacked
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-            if (player.level().isClientSide &&
-                ObsAnnotatorClient.CONFIG.enableCombatEvents &&
+            if (ObsAnnotatorClient.CONFIG.enableCombatEvents &&
                 ObsAnnotatorClient.CONFIG.combatEntityAttacked) {
                 ObsAnnotatorClient.sendAnnotation("Combat - Entity Attacked");
             }

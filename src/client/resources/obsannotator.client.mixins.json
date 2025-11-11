@@ -3,6 +3,7 @@
 	"package": "ninja.trek.obsannotator.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"ClientAdvancementsAccessor",
 		"ClientboundExplodePacketMixin"
 	],
 	"injectors": {

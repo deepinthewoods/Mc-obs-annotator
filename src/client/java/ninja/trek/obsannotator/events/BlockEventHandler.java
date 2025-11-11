@@ -13,8 +13,7 @@ public class BlockEventHandler {
     public static void register() {
         // Block broken
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
-            if (world.isClientSide &&
-                ObsAnnotatorClient.CONFIG.enableBlockEvents &&
+            if (ObsAnnotatorClient.CONFIG.enableBlockEvents &&
                 ObsAnnotatorClient.CONFIG.blockBroken) {
 
                 Block block = state.getBlock();
@@ -26,8 +25,7 @@ public class BlockEventHandler {
 
         // Block left-clicked (attacked)
         AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {
-            if (world.isClientSide &&
-                ObsAnnotatorClient.CONFIG.enableBlockEvents &&
+            if (ObsAnnotatorClient.CONFIG.enableBlockEvents &&
                 ObsAnnotatorClient.CONFIG.blockLeftClick) {
                 ObsAnnotatorClient.sendAnnotation("Block - Left Click");
             }
@@ -36,8 +34,7 @@ public class BlockEventHandler {
 
         // Block right-clicked (used)
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClientSide &&
-                ObsAnnotatorClient.CONFIG.enableBlockEvents &&
+            if (ObsAnnotatorClient.CONFIG.enableBlockEvents &&
                 ObsAnnotatorClient.CONFIG.blockRightClick) {
                 ObsAnnotatorClient.sendAnnotation("Block - Right Click");
             }

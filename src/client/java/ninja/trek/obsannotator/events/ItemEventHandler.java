@@ -19,8 +19,7 @@ public class ItemEventHandler {
     public static void register() {
         // Item used
         UseItemCallback.EVENT.register((player, world, hand) -> {
-            if (world.isClientSide &&
-                ObsAnnotatorClient.CONFIG.enableItemEvents &&
+            if (ObsAnnotatorClient.CONFIG.enableItemEvents &&
                 ObsAnnotatorClient.CONFIG.itemUsed) {
                 ObsAnnotatorClient.sendAnnotation("Item - Used");
             }
@@ -37,7 +36,8 @@ public class ItemEventHandler {
             }
 
             // Check inventory for rare items
-            for (ItemStack stack : player.getInventory().items) {
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                ItemStack stack = player.getInventory().getItem(i);
                 if (stack.isEmpty()) {
                     continue;
                 }
@@ -54,7 +54,8 @@ public class ItemEventHandler {
 
             // Update tracked counts
             lastItemCounts.clear();
-            for (ItemStack stack : player.getInventory().items) {
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                ItemStack stack = player.getInventory().getItem(i);
                 if (!stack.isEmpty()) {
                     Item item = stack.getItem();
                     lastItemCounts.merge(item, stack.getCount(), Integer::sum);

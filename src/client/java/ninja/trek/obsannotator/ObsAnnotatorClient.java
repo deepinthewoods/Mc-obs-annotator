@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.ResourceLocation;
 import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
 import ninja.trek.obsannotator.events.*;
 import ninja.trek.obsannotator.websocket.ObsWebSocketClient;
@@ -13,6 +14,11 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	public static ObsAnnotatorConfig CONFIG;
 	public static ObsWebSocketClient WS_CLIENT;
 	public static EventTracker EVENT_TRACKER;
+
+	// Keybinding category
+	private static final KeyMapping.Category CATEGORY = KeyMapping.Category.create(
+		ResourceLocation.fromNamespaceAndPath("obsannotator", "main")
+	);
 
 	// Keybindings
 	private static KeyMapping keyStart;
@@ -57,25 +63,25 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		keyStart = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.start",
 			GLFW.GLFW_KEY_KP_7,
-			"category.obsannotator"
+			CATEGORY
 		));
 
 		keyEnd = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.end",
 			GLFW.GLFW_KEY_KP_9,
-			"category.obsannotator"
+			CATEGORY
 		));
 
 		keyPoiA = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_a",
 			GLFW.GLFW_KEY_KP_4,
-			"category.obsannotator"
+			CATEGORY
 		));
 
 		keyPoiB = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_b",
 			GLFW.GLFW_KEY_KP_6,
-			"category.obsannotator"
+			CATEGORY
 		));
 
 		// Register tick event to check for key presses

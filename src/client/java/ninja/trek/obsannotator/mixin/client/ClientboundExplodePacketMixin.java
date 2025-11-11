@@ -12,8 +12,7 @@ public class ClientboundExplodePacketMixin {
 
     @Inject(method = "<init>(DDDFLjava/util/List;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/network/protocol/game/ClientboundExplodePacket$BlockInteraction;Lnet/minecraft/core/particles/ParticleOptions;Lnet/minecraft/core/particles/ParticleOptions;Lnet/minecraft/core/Holder;)V",
             at = @At("RETURN"))
-    private void onExplosion(CallbackInfo ci) {
-        ClientboundExplodePacket packet = (ClientboundExplodePacket) (Object) this;
-        ExplosionEventHandler.onExplosion(packet.getX(), packet.getY(), packet.getZ());
+    private void onExplosion(double x, double y, double z, CallbackInfo ci) {
+        ExplosionEventHandler.onExplosion(x, y, z);
     }
 }
