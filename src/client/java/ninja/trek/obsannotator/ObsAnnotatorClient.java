@@ -14,12 +14,7 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	public static ObsWebSocketClient WS_CLIENT;
 	public static EventTracker EVENT_TRACKER;
 
-	// Keybinding category
-	private static final KeyMapping.Category CATEGORY = KeyMapping.Category.create(
-		"obsannotator:main"
-	);
-
-	// Keybindings
+	// Keybindings - using MISC category since custom categories may not be supported in 1.21.10
 	private static KeyMapping keyStart;
 	private static KeyMapping keyEnd;
 	private static KeyMapping keyPoiA;
@@ -62,25 +57,25 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		keyStart = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.start",
 			GLFW.GLFW_KEY_KP_7,
-			CATEGORY
+			KeyMapping.Category.MISC
 		));
 
 		keyEnd = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.end",
 			GLFW.GLFW_KEY_KP_9,
-			CATEGORY
+			KeyMapping.Category.MISC
 		));
 
 		keyPoiA = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_a",
 			GLFW.GLFW_KEY_KP_4,
-			CATEGORY
+			KeyMapping.Category.MISC
 		));
 
 		keyPoiB = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_b",
 			GLFW.GLFW_KEY_KP_6,
-			CATEGORY
+			KeyMapping.Category.MISC
 		));
 
 		// Register tick event to check for key presses
