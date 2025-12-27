@@ -1,0 +1,65 @@
+{
+  "name": "resolve-obsannotator-plugin",
+  "version": "1.0.0",
+  "description": "DaVinci Resolve companion plugin for ObsAnnotator Minecraft mod",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
+    "dev:react": "webpack serve --mode development",
+    "dev:electron": "wait-on http://localhost:3000 && electron .",
+    "build": "webpack --mode production",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "package": "npm run build && npm run build:electron && electron-builder"
+  },
+  "keywords": [
+    "davinci-resolve",
+    "minecraft",
+    "obs",
+    "video-editing",
+    "edl"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "concurrently": "^8.2.2",
+    "css-loader": "^6.8.1",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "html-webpack-plugin": "^5.6.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "wait-on": "^7.2.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "build": {
+    "appId": "com.obsannotator.resolve-plugin",
+    "productName": "ObsAnnotator DaVinci Resolve Plugin",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

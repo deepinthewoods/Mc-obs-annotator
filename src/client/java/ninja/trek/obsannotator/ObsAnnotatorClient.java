@@ -14,7 +14,7 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	public static ObsWebSocketClient WS_CLIENT;
 	public static EventTracker EVENT_TRACKER;
 
-	// Keybindings - using MISC category since custom categories may not be supported in 1.21.10
+	// Keybindings
 	private static KeyMapping keyStart;
 	private static KeyMapping keyEnd;
 	private static KeyMapping keyPoiA;
@@ -48,7 +48,14 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		try {
 			WS_CLIENT = new ObsWebSocketClient(CONFIG);
 			WS_CLIENT.setReconnectCallback(this::handleReconnect);
-			WS_CLIENT.connect();
+			// Connect asynchronously to avoid blocking Minecraft startup
+			new Thread(() -> {
+				try {
+					WS_CLIENT.connect();
+				} catch (Exception e) {
+					System.err.println("[OBS Annotator] Failed to connect to OBS: " + e.getMessage());
+				}
+			}, "OBS-Annotator-Connection").start();
 		} catch (Exception e) {
 			System.err.println("[OBS Annotator] Failed to initialize WebSocket: " + e.getMessage());
 		}
@@ -74,7 +81,14 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 			// Create new client with potentially updated config
 			WS_CLIENT = new ObsWebSocketClient(CONFIG);
 			WS_CLIENT.setReconnectCallback(this::handleReconnect);
-			WS_CLIENT.connect();
+			// Connect asynchronously to avoid blocking
+			new Thread(() -> {
+				try {
+					WS_CLIENT.connect();
+				} catch (Exception e) {
+					System.err.println("[OBS Annotator] Failed to reconnect to OBS: " + e.getMessage());
+				}
+			}, "OBS-Annotator-Reconnection").start();
 		} catch (Exception e) {
 			System.err.println("[OBS Annotator] Failed to reconnect WebSocket: " + e.getMessage());
 		}
@@ -84,25 +98,25 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		keyStart = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.start",
 			GLFW.GLFW_KEY_KP_7,
-			KeyMapping.Category.MISC
+			"category.obsannotator"
 		));
 
 		keyEnd = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.end",
 			GLFW.GLFW_KEY_KP_9,
-			KeyMapping.Category.MISC
+			"category.obsannotator"
 		));
 
 		keyPoiA = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_a",
 			GLFW.GLFW_KEY_KP_4,
-			KeyMapping.Category.MISC
+			"category.obsannotator"
 		));
 
 		keyPoiB = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_b",
 			GLFW.GLFW_KEY_KP_6,
-			KeyMapping.Category.MISC
+			"category.obsannotator"
 		));
 
 		// Register tick event to check for key presses

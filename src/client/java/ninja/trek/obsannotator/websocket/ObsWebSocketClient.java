@@ -64,11 +64,30 @@ public class ObsWebSocketClient extends WebSocketClient {
                     break;
                 case 9: // Event (not used, but OBS sends them)
                     break;
+                case 7: // RequestResponse
+                    logRequestResponse(msg);
+                    break;
                 default:
                     break;
             }
         } catch (Exception e) {
             System.err.println("[OBS Annotator] Error processing message: " + e.getMessage());
+        }
+    }
+
+    private void logRequestResponse(JsonObject msg) {
+        try {
+            JsonObject d = msg.getAsJsonObject("d");
+            String requestType = d.has("requestType") ? d.get("requestType").getAsString() : "unknown";
+            String requestId = d.has("requestId") ? d.get("requestId").getAsString() : "unknown";
+            JsonObject status = d.getAsJsonObject("requestStatus");
+            if (status != null && status.has("result") && !status.get("result").getAsBoolean()) {
+                String code = status.has("code") ? status.get("code").getAsString() : "unknown";
+                String comment = status.has("comment") ? status.get("comment").getAsString() : "unknown";
+                System.err.println("[OBS Annotator] Request failed (" + requestType + ", " + requestId + "): " + code + " - " + comment);
+            }
+        } catch (Exception e) {
+            System.err.println("[OBS Annotator] Error logging request response: " + e.getMessage());
         }
     }
 
@@ -170,11 +189,11 @@ public class ObsWebSocketClient extends WebSocketClient {
 
             JsonObject requestDataInner = new JsonObject();
             requestDataInner.addProperty("vendorName", "streamup-chapter-manager");
-            requestDataInner.addProperty("requestType", "setAnnotation");
+            requestDataInner.addProperty("requestType", "setChapterMarker");
 
             JsonObject vendorRequest = new JsonObject();
-            vendorRequest.addProperty("annotationText", annotationText);
-            vendorRequest.addProperty("annotationSource", "Minecraft");
+            vendorRequest.addProperty("chapterName", annotationText);
+            vendorRequest.addProperty("chapterSource", "Minecraft");
 
             requestDataInner.add("requestData", vendorRequest);
             requestData.add("requestData", requestDataInner);
