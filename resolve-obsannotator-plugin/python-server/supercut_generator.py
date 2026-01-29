@@ -1,5 +1,6 @@
+import os
 import random
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 class SupercutGenerator:
@@ -227,3 +228,185 @@ class SupercutGenerator:
                 clipIndex=i,
                 duration=transition_frames
             )
+
+    def read_timeline_clips(self, timeline) -> List[Dict]:
+        """
+        Read all clips from the current timeline with their markers and event info.
+
+        Returns:
+            List of clip dicts with index, name, event_type, marker info.
+        """
+        clips = timeline.GetItemListInTrack("video", 1)
+        if not clips:
+            return []
+
+        framerate = float(timeline.GetSetting('timelineFrameRate'))
+        result = []
+
+        # Also read timeline markers
+        timeline_markers = timeline.GetMarkers() or {}
+
+        for idx, clip in enumerate(clips):
+            clip_name = clip.GetName()
+            start_frame = clip.GetStart()
+            end_frame = clip.GetEnd()
+            duration_frames = end_frame - start_frame
+            duration_sec = duration_frames / framerate
+
+            # Infer event type from filename
+            # Filenames follow pattern: EventType_NNN.mkv
+            base = os.path.splitext(clip_name)[0]
+            # Strip trailing _NNN
+            parts = base.rsplit('_', 1)
+            event_type = parts[0] if len(parts) == 2 and parts[1].isdigit() else base
+
+            # Check for markers within clip range
+            clip_markers = []
+            for frame_id, marker_data in timeline_markers.items():
+                if start_frame <= frame_id < end_frame:
+                    clip_markers.append({
+                        'frame': frame_id,
+                        'name': marker_data.get('name', ''),
+                        'color': marker_data.get('color', ''),
+                        'note': marker_data.get('note', '')
+                    })
+
+            result.append({
+                'index': idx,
+                'name': clip_name,
+                'eventType': event_type,
+                'startFrame': start_frame,
+                'endFrame': end_frame,
+                'duration': round(duration_sec, 3),
+                'markers': clip_markers
+            })
+
+        return result
+
+    def generate_from_timeline_clips(
+        self,
+        source_timeline,
+        clip_indices: List[int],
+        bpm: int,
+        note_division: str,
+        options: Dict,
+        framerate: float
+    ) -> Dict[str, Any]:
+        """
+        Generate a BPM-synced supercut from selected clips in an existing timeline.
+
+        Args:
+            source_timeline: The source Resolve timeline object
+            clip_indices: Indices of clips to include
+            bpm: Beats per minute
+            note_division: Note division string
+            options: Generation options
+            framerate: Timeline framerate
+
+        Returns:
+            Result dict with success, timeline_name, clips_added, duration_seconds
+        """
+        beat_interval = 60.0 / bpm
+        clip_duration = self._calculate_clip_duration(bpm, note_division)
+        half_duration = clip_duration / 2.0
+
+        # Get clips from source timeline
+        all_clips = source_timeline.GetItemListInTrack("video", 1)
+        if not all_clips:
+            return {'success': False, 'error': 'No clips in source timeline'}
+
+        # Get timeline markers for event center detection
+        timeline_markers = source_timeline.GetMarkers() or {}
+
+        # Gather selected clips with their media pool items and event center frames
+        selected = []
+        for idx in clip_indices:
+            if idx < 0 or idx >= len(all_clips):
+                continue
+            clip = all_clips[idx]
+            media_item = clip.GetMediaPoolItem()
+            if not media_item:
+                continue
+
+            start_frame = clip.GetStart()
+            end_frame = clip.GetEnd()
+            clip_mid = (start_frame + end_frame) / 2.0
+
+            # Look for a marker within the clip range; use it as event center
+            event_frame = clip_mid  # default: clip center
+            for frame_id, _ in timeline_markers.items():
+                if start_frame <= frame_id < end_frame:
+                    event_frame = frame_id
+                    break
+
+            # Compute the event position relative to clip's own media
+            # source_in is the frame within the media pool item where the clip starts
+            source_in = clip.GetLeftOffset()
+            event_in_media = source_in + (event_frame - start_frame)
+
+            selected.append({
+                'media_item': media_item,
+                'event_frame': event_in_media,
+                'name': clip.GetName()
+            })
+
+        if options.get('randomize', False):
+            random.shuffle(selected)
+
+        if not selected:
+            return {'success': False, 'error': 'No valid clips selected'}
+
+        # Create new timeline
+        timeline_name = options.get('output_timeline_name', f'Supercut_{bpm}BPM')
+        new_timeline = self.media_pool.CreateEmptyTimeline(timeline_name)
+        if not new_timeline:
+            return {'success': False, 'error': 'Failed to create timeline'}
+
+        new_framerate = float(new_timeline.GetSetting('timelineFrameRate'))
+        clips_added = 0
+        beat_position = 0.0
+
+        for sel in selected:
+            event_frame = sel['event_frame']
+            start_f = int(event_frame - half_duration * new_framerate)
+            end_f = int(event_frame + half_duration * new_framerate)
+            if start_f < 0:
+                start_f = 0
+                end_f = int(clip_duration * new_framerate)
+
+            clip_info = {
+                "mediaPoolItem": sel['media_item'],
+                "startFrame": start_f,
+                "endFrame": end_f,
+                "trackIndex": 1
+            }
+
+            result = self.media_pool.AppendToTimeline([clip_info])
+            if result:
+                clips_added += 1
+
+                if options.get('add_beat_markers', True):
+                    beat_frame = int(beat_position * new_framerate)
+                    new_timeline.AddMarker(
+                        frameId=beat_frame,
+                        color='Blue',
+                        name=sel['name'],
+                        note=f"Beat {clips_added}",
+                        duration=1
+                    )
+
+            beat_position += beat_interval
+
+        if options.get('add_crossfades', False):
+            self._add_crossfades(
+                new_timeline,
+                options.get('crossfade_duration', 0.2),
+                new_framerate
+            )
+
+        return {
+            'success': True,
+            'timeline_name': timeline_name,
+            'clips_added': clips_added,
+            'duration_seconds': beat_position
+        }

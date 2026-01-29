@@ -4,6 +4,8 @@ import { EventStatistics } from './components/EventStatistics';
 import { FilterPanel } from './components/FilterPanel';
 import { MarkerList } from './components/MarkerList';
 import { SupercutPanel } from './components/SupercutPanel';
+import { BulkImportPanel } from './components/BulkImportPanel';
+import { TimelineSupercut } from './components/TimelineSupercut';
 import { StatusBar } from './components/StatusBar';
 import { useEdlParser } from './hooks/useEdlParser';
 import { useMarkerFilter } from './hooks/useMarkerFilter';
@@ -11,7 +13,10 @@ import { useResolveApi } from './hooks/useResolveApi';
 import { SupercutOptions } from './types/api';
 import './styles/globals.css';
 
+type TabType = 'single' | 'bulk' | 'timeline-supercut';
+
 export const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('single');
   const [videoFile, setVideoFile] = useState('');
   const [edlFile, setEdlFile] = useState('');
 
@@ -113,67 +118,99 @@ export const App: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <h1>ObsAnnotator - DaVinci Resolve Companion</h1>
+        <div className="tab-navigation">
+          <button
+            className={`tab-button ${activeTab === 'single' ? 'active' : ''}`}
+            onClick={() => setActiveTab('single')}
+          >
+            Single Import
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'bulk' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bulk')}
+          >
+            Bulk Import
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'timeline-supercut' ? 'active' : ''}`}
+            onClick={() => setActiveTab('timeline-supercut')}
+          >
+            Timeline Supercut
+          </button>
+        </div>
       </header>
 
       <main className="app-main">
-        <FileBrowser
-          videoFile={videoFile}
-          edlFile={edlFile}
-          onVideoFileChange={setVideoFile}
-          onEdlFileChange={setEdlFile}
-          onLoadFiles={handleLoadFiles}
-          loading={edlParser.loading}
-          markerCount={edlParser.markers.length}
-        />
-
-        {edlParser.markers.length > 0 && (
+        {activeTab === 'single' && (
           <>
-            <EventStatistics
-              statistics={edlParser.statistics}
-              totalCount={edlParser.markers.length}
-            />
-
-            <FilterPanel
-              filters={markerFilter.filters}
-              eventTypes={markerFilter.eventTypes}
-              statistics={markerFilter.filteredStatistics}
-              maxTimestamp={maxTimestamp}
-              onFilterChange={markerFilter.updateFilter}
-              onClearFilters={markerFilter.clearFilters}
-            />
-
-            <MarkerList
-              markers={markerFilter.filteredMarkers}
-              selectedIds={markerFilter.selectedMarkerIds}
-              onToggleSelection={markerFilter.toggleMarkerSelection}
-              onSelectAll={markerFilter.selectAllFiltered}
-              onClearSelection={markerFilter.clearSelection}
-            />
-
-            <div className="import-buttons">
-              <button
-                onClick={handleImportSelected}
-                disabled={markerFilter.selectedMarkers.length === 0 || resolveApi.loading}
-                className="import-button"
-              >
-                Import Selected to Timeline ({markerFilter.selectedMarkers.length})
-              </button>
-              <button
-                onClick={handleImportAll}
-                disabled={markerFilter.filteredMarkers.length === 0 || resolveApi.loading}
-                className="import-button"
-              >
-                Import All Filtered ({markerFilter.filteredMarkers.length})
-              </button>
-            </div>
-
-            <SupercutPanel
-              markers={markerFilter.filteredMarkers}
+            <FileBrowser
               videoFile={videoFile}
-              onGenerate={handleGenerateSupercut}
-              loading={resolveApi.loading}
+              edlFile={edlFile}
+              onVideoFileChange={setVideoFile}
+              onEdlFileChange={setEdlFile}
+              onLoadFiles={handleLoadFiles}
+              loading={edlParser.loading}
+              markerCount={edlParser.markers.length}
             />
+
+            {edlParser.markers.length > 0 && (
+              <>
+                <EventStatistics
+                  statistics={edlParser.statistics}
+                  totalCount={edlParser.markers.length}
+                />
+
+                <FilterPanel
+                  filters={markerFilter.filters}
+                  eventTypes={markerFilter.eventTypes}
+                  statistics={markerFilter.filteredStatistics}
+                  maxTimestamp={maxTimestamp}
+                  onFilterChange={markerFilter.updateFilter}
+                  onClearFilters={markerFilter.clearFilters}
+                />
+
+                <MarkerList
+                  markers={markerFilter.filteredMarkers}
+                  selectedIds={markerFilter.selectedMarkerIds}
+                  onToggleSelection={markerFilter.toggleMarkerSelection}
+                  onSelectAll={markerFilter.selectAllFiltered}
+                  onClearSelection={markerFilter.clearSelection}
+                />
+
+                <div className="import-buttons">
+                  <button
+                    onClick={handleImportSelected}
+                    disabled={markerFilter.selectedMarkers.length === 0 || resolveApi.loading}
+                    className="import-button"
+                  >
+                    Import Selected to Timeline ({markerFilter.selectedMarkers.length})
+                  </button>
+                  <button
+                    onClick={handleImportAll}
+                    disabled={markerFilter.filteredMarkers.length === 0 || resolveApi.loading}
+                    className="import-button"
+                  >
+                    Import All Filtered ({markerFilter.filteredMarkers.length})
+                  </button>
+                </div>
+
+                <SupercutPanel
+                  markers={markerFilter.filteredMarkers}
+                  videoFile={videoFile}
+                  onGenerate={handleGenerateSupercut}
+                  loading={resolveApi.loading}
+                />
+              </>
+            )}
           </>
+        )}
+
+        {activeTab === 'bulk' && (
+          <BulkImportPanel isConnected={resolveApi.isConnected} />
+        )}
+
+        {activeTab === 'timeline-supercut' && (
+          <TimelineSupercut isConnected={resolveApi.isConnected} />
         )}
       </main>
 

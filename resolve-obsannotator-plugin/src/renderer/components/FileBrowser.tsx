@@ -28,7 +28,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        onVideoFileChange(file.path);
+        onVideoFileChange((file as any).path);
       }
     };
     input.click();
@@ -41,7 +41,7 @@ export const FileBrowser: React.FC<FileBrowserProps> = ({
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        onEdlFileChange(file.path);
+        onEdlFileChange((file as any).path);
       }
     };
     input.click();

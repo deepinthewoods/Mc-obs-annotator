@@ -1,0 +1,8 @@
+Starting ObsAnnotator Python server...
+Connecting to DaVinci Resolve...
+[OK] Connected to DaVinci Resolve
+[OK] Project open: 1hmc first
+
+Server running on http://localhost:8765
+ * Serving Flask app 'server'
+ * Debug mode: off

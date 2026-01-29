@@ -21,7 +21,7 @@ class EdlParser:
             }
         """
         markers = []
-        last_marker = None
+        seen_markers = set()
         title = ""
         fcm = "NON-DROP FRAME"
 
@@ -46,11 +46,17 @@ class EdlParser:
             # Parse event line (starts with digit)
             elif line and line[0].isdigit():
                 marker = self._parse_event(lines, i)
-                if marker and not self._is_duplicate_marker(marker, last_marker):
+                if marker and not self._is_duplicate_marker(marker, seen_markers):
                     markers.append(marker)
-                    last_marker = marker
 
             i += 1
+
+        # Subtract timeline start offset (DaVinci Resolve typically starts at 01:00:00:00)
+        # Use the first marker's timestamp as the base offset
+        if markers:
+            base_offset = markers[0]['timestampSeconds']
+            for marker in markers:
+                marker['timestampSeconds'] = marker['timestampSeconds'] - base_offset
 
         return {
             'title': title,
@@ -64,7 +70,7 @@ class EdlParser:
         line = lines[start_idx].strip()
         parts = line.split()
 
-        if len(parts) < 9:
+        if len(parts) < 5:
             return None
 
         event_num = int(parts[0])
@@ -72,6 +78,8 @@ class EdlParser:
         timecode = parts[4]
 
         # Parse metadata lines (|C:, |M:, |D:)
+        # Metadata can be on separate lines OR all on a single line like:
+        #   Start |C:ResolveColorBlue |M:Start |D:1
         color = None
         text = None
         duration = 1
@@ -79,15 +87,30 @@ class EdlParser:
         for j in range(start_idx + 1, min(start_idx + 10, len(lines))):
             meta_line = lines[j].strip()
 
-            if meta_line.startswith('|C:'):
+            if not meta_line or (meta_line[0].isdigit() and j > start_idx + 1):
+                # Next event or empty line, stop parsing metadata
+                break
+
+            # Check if line has inline metadata (split on |)
+            if '|' in meta_line:
+                parts = meta_line.split('|')
+                for part in parts:
+                    part = part.strip()
+                    if part.startswith('C:'):
+                        color = part[2:].strip()
+                    elif part.startswith('M:'):
+                        text = part[2:].strip()
+                    elif part.startswith('D:'):
+                        try:
+                            duration = int(part[2:].strip())
+                        except ValueError:
+                            pass
+            elif meta_line.startswith('|C:'):
                 color = meta_line[3:].strip()
             elif meta_line.startswith('|M:'):
                 text = meta_line[3:].strip()
             elif meta_line.startswith('|D:'):
                 duration = int(meta_line[3:].strip())
-            elif not meta_line or (meta_line[0].isdigit() and j > start_idx + 1):
-                # Next event or empty line, stop parsing metadata
-                break
 
         if not text:
             return None
@@ -109,16 +132,17 @@ class EdlParser:
             'duration': duration
         }
 
-    def _is_duplicate_marker(self, marker: Dict, last_marker: Optional[Dict]) -> bool:
-        if not last_marker:
-            return False
-
-        return (
-            marker['timecode'] == last_marker['timecode'] and
-            marker['text'] == last_marker['text'] and
-            marker.get('color') == last_marker.get('color') and
-            marker.get('duration', 1) == last_marker.get('duration', 1)
+    def _is_duplicate_marker(self, marker: Dict, seen_markers: set) -> bool:
+        key = (
+            marker['timecode'],
+            marker['text'],
+            marker.get('color'),
+            marker.get('duration', 1)
         )
+        if key in seen_markers:
+            return True
+        seen_markers.add(key)
+        return False
 
     def timecode_to_seconds(self, timecode: str) -> float:
         """

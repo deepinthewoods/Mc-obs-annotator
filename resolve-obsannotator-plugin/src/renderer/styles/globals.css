@@ -32,6 +32,35 @@ body {
   color: #ffffff;
 }
 
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tab-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #404040;
+  color: #9ca3af;
+  border: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  background-color: #505050;
+  color: #e0e0e0;
+}
+
+.tab-button.active {
+  background-color: #2d2d2d;
+  color: #ffffff;
+  border-bottom: 2px solid #0066cc;
+}
+
 .app-main {
   flex: 1;
   padding: 1.5rem;
@@ -403,4 +432,503 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+
+/* Bulk Import Panel */
+.bulk-import-panel h2 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.bulk-import-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bulk-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Bulk Settings */
+.bulk-settings h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: #9ca3af;
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.setting-row label {
+  min-width: 120px;
+}
+
+.checkbox-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-left: 120px;
+}
+
+/* Event Type Header */
+.event-type-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.event-type-header h3 {
+  font-size: 1rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.event-type-header .selection-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.event-type-header .selection-buttons button {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* Bulk Sessions */
+.bulk-sessions {
+  background-color: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.sessions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.sessions-header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.sessions-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background-color: #2d2d2d;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.session-item:hover {
+  background-color: #333;
+}
+
+.session-item.selected {
+  background-color: #1a3a52;
+  border-color: #0066cc;
+}
+
+.session-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.session-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.session-name {
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.session-details {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.session-markers {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.marker-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.marker-badge.chapters {
+  background-color: #1a3a52;
+  color: #60a5fa;
+}
+
+.marker-badge.recordings {
+  background-color: #1a4a1a;
+  color: #4ade80;
+}
+
+.marker-badge.pois {
+  background-color: #4a1a4a;
+  color: #c084fc;
+}
+
+/* Bulk Actions */
+.bulk-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #404040;
+}
+
+/* Bulk Progress */
+.bulk-progress {
+  background-color: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.bulk-progress h3 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.progress-section {
+  margin-bottom: 1rem;
+}
+
+.progress-label {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.progress-bar {
+  height: 24px;
+  background-color: #404040;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.session-progress {
+  background-color: #0066cc;
+}
+
+.progress-fill.clip-progress {
+  background-color: #00cc66;
+}
+
+.progress-percent {
+  text-align: right;
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.progress-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress-stats .extracted {
+  color: #4ade80;
+}
+
+.progress-stats .skipped {
+  color: #fbbf24;
+}
+
+.progress-stats .errors {
+  color: #f87171;
+}
+
+.progress-stats .skipped-existing {
+  color: #60a5fa;
+}
+
+.progress-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pause-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #d97706;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.pause-button:hover {
+  background-color: #b45309;
+}
+
+.cancel-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #b91c1c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.cancel-button:hover {
+  background-color: #991b1b;
+}
+
+/* Bulk Error */
+.bulk-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #3d1f1f;
+  border: 1px solid #cc0000;
+  border-radius: 4px;
+}
+
+.bulk-error .error-icon {
+  color: #f87171;
+  font-weight: 600;
+}
+
+.bulk-error .error-message {
+  flex: 1;
+  color: #fca5a5;
+}
+
+/* Timeline Supercut */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.panel-description {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.warning-banner {
+  padding: 0.75rem 1rem;
+  background-color: #4a3a1a;
+  border: 1px solid #b8860b;
+  border-radius: 4px;
+  color: #fbbf24;
+}
+
+.error-banner {
+  padding: 0.75rem 1rem;
+  background-color: #3d1f1f;
+  border: 1px solid #cc0000;
+  border-radius: 4px;
+  color: #fca5a5;
+}
+
+.primary-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.primary-button:hover {
+  background-color: #0052a3;
+}
+
+.primary-button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.small-button {
+  padding: 0.25rem 0.75rem;
+  background-color: #555;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s;
+}
+
+.small-button:hover {
+  background-color: #666;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group > label {
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.event-type-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.list-header > div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.clip-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  padding: 0.5rem;
+  background-color: #1e1e1e;
+}
+
+.clip-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.clip-item:hover {
+  background-color: #333;
+}
+
+.clip-item.selected {
+  background-color: #1a3a52;
+}
+
+.clip-name {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.event-badge {
+  padding: 0.15rem 0.5rem;
+  background-color: #1a3a52;
+  color: #60a5fa;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.clip-duration {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+.number-input,
+.text-input {
+  padding: 0.5rem;
+  background-color: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-family: inherit;
+  max-width: 200px;
+}
+
+.text-input {
+  max-width: 100%;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.sub-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 1.5rem;
 }

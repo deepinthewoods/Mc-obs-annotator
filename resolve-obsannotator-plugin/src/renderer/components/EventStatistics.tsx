@@ -5,16 +5,47 @@ interface EventStatisticsProps {
   totalCount: number;
 }
 
-const EVENT_TYPE_COLORS: { [key: string]: string } = {
-  Combat: '🔴',
-  Boss: '🟣',
-  Block: '🔵',
-  Item: '🟢',
-  Exploration: '🔵',
-  Achievement: '🟡',
-  Explosion: '🟠',
-  Manual: '🟡',
-};
+const EVENT_TYPE_PREFIX_COLORS: [string, string][] = [
+  ['Combat', '🔴'],
+  ['Entity Attacked', '🔴'],
+  ['Damage', '🔴'],
+  ['Boss', '🟣'],
+  ['Block Break', '🔵'],
+  ['Block Place', '🔵'],
+  ['Rare Item', '🟢'],
+  ['Food Eaten', '🟢'],
+  ['Potion Drunk', '🟢'],
+  ['Bow Fired', '🟢'],
+  ['Crossbow Fired', '🟢'],
+  ['Trident Thrown', '🟢'],
+  ['Ender Pearl', '🟢'],
+  ['Item Used', '🟢'],
+  ['Item - Tool Broke', '🟢'],
+  ['Exploration', '🔵'],
+  ['Achievement', '🟡'],
+  ['Fall Landed', '🟤'],
+  ['Elytra', '🟤'],
+  ['Mount', '🟤'],
+  ['Explosion', '🟠'],
+  ['Environment', '🟠'],
+  ['Crafted', '🟡'],
+  ['Trade', '🟡'],
+  ['Enchanted', '🟡'],
+  ['Interaction', '🟡'],
+  ['Entered', '🟣'],
+  ['Returned', '🟣'],
+  ['Started Sleeping', '🔵'],
+  ['Woke Up', '🔵'],
+  ['Status Effect', '🟢'],
+  ['Manual', '🟡'],
+];
+
+function getEventColor(eventType: string): string {
+  for (const [prefix, color] of EVENT_TYPE_PREFIX_COLORS) {
+    if (eventType.startsWith(prefix)) return color;
+  }
+  return '⚪';
+}
 
 export const EventStatistics: React.FC<EventStatisticsProps> = ({
   statistics,
@@ -28,7 +59,7 @@ export const EventStatistics: React.FC<EventStatisticsProps> = ({
       <div className="statistics-grid">
         {entries.map(([type, count]) => (
           <div key={type} className="stat-item">
-            {EVENT_TYPE_COLORS[type] || '⚪'} {type}: {count}
+            {getEventColor(type)} {type}: {count}
           </div>
         ))}
         {entries.length > 0 && (

@@ -1,0 +1,34 @@
+const STORAGE_KEY = 'obsAnnotator_settings';
+
+interface PersistedSettings {
+  sourceFolder?: string;
+  outputFolder?: string;
+  enabledEventTypes?: string[];
+  chapterBuffer?: number;
+  poiDuration?: number;
+  mergeOverlapping?: boolean;
+  skipBlackClips?: boolean;
+  createTimelines?: boolean;
+}
+
+export function loadPersistedSettings(): PersistedSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw) as PersistedSettings;
+    }
+  } catch {
+    // ignore corrupt data
+  }
+  return {};
+}
+
+export function savePersistedSettings(settings: PersistedSettings): void {
+  try {
+    const existing = loadPersistedSettings();
+    const merged = { ...existing, ...settings };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  } catch {
+    // ignore storage errors
+  }
+}

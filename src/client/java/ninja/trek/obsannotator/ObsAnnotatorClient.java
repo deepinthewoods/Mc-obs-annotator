@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.ResourceLocation;
 import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
 import ninja.trek.obsannotator.events.*;
 import ninja.trek.obsannotator.websocket.ObsWebSocketClient;
@@ -14,11 +15,20 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	public static ObsWebSocketClient WS_CLIENT;
 	public static EventTracker EVENT_TRACKER;
 
+	// Custom keybinding category
+	private static final KeyMapping.Category KEYBIND_CATEGORY =
+		KeyMapping.Category.register(ResourceLocation.fromNamespaceAndPath("obsannotator", "general"));
+
 	// Keybindings
 	private static KeyMapping keyStart;
 	private static KeyMapping keyEnd;
 	private static KeyMapping keyPoiA;
 	private static KeyMapping keyPoiB;
+
+	// Auto recording state tracking
+	private boolean wasInWorld = false;
+	private boolean wasWindowFocused = false;
+	private boolean isRecording = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -40,6 +50,11 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		ExplorationEventHandler.register();
 		AchievementEventHandler.register();
 		ExplosionEventHandler.register();
+		FallEventHandler.register();
+		InteractionEventHandler.register();
+		MovementEventHandler.register();
+		EnvironmentEventHandler.register();
+		StatusEffectEventHandler.register();
 
 		System.out.println("[OBS Annotator] Initialized successfully");
 	}
@@ -98,28 +113,28 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		keyStart = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.start",
 			GLFW.GLFW_KEY_KP_7,
-			"category.obsannotator"
+			KEYBIND_CATEGORY
 		));
 
 		keyEnd = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.end",
 			GLFW.GLFW_KEY_KP_9,
-			"category.obsannotator"
+			KEYBIND_CATEGORY
 		));
 
 		keyPoiA = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_a",
 			GLFW.GLFW_KEY_KP_4,
-			"category.obsannotator"
+			KEYBIND_CATEGORY
 		));
 
 		keyPoiB = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.poi_b",
 			GLFW.GLFW_KEY_KP_6,
-			"category.obsannotator"
+			KEYBIND_CATEGORY
 		));
 
-		// Register tick event to check for key presses
+		// Register tick event to check for key presses and auto recording
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (keyStart.consumeClick()) {
 				sendAnnotation("Start");
@@ -133,7 +148,58 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 			while (keyPoiB.consumeClick()) {
 				sendAnnotation("POI B");
 			}
+
+			// Auto recording logic
+			if (CONFIG.enableAutoRecording) {
+				updateAutoRecording(client);
+			}
 		});
+	}
+
+	private void updateAutoRecording(net.minecraft.client.Minecraft client) {
+		boolean inWorld = client.player != null && client.level != null;
+		boolean windowFocused = client.isWindowActive();
+
+		// Detect state changes
+		boolean justJoinedWorld = inWorld && !wasInWorld;
+		boolean justLeftWorld = !inWorld && wasInWorld;
+		boolean justLostFocus = inWorld && !windowFocused && wasWindowFocused;
+		boolean justGainedFocus = inWorld && windowFocused && !wasWindowFocused;
+
+		// Handle state transitions
+		if (justJoinedWorld && windowFocused) {
+			// Player joined world with window focused - start recording
+			startRecordingIfNotAlready();
+		} else if (justLeftWorld) {
+			// Player left world - stop recording
+			stopRecordingIfActive();
+		} else if (justLostFocus) {
+			// Alt-tabbed out while in world - stop recording
+			stopRecordingIfActive();
+		} else if (justGainedFocus) {
+			// Alt-tabbed back in while in world - start new recording
+			startRecordingIfNotAlready();
+		}
+
+		// Update previous state
+		wasInWorld = inWorld;
+		wasWindowFocused = windowFocused;
+	}
+
+	private void startRecordingIfNotAlready() {
+		if (!isRecording && WS_CLIENT != null && WS_CLIENT.isAuthenticated()) {
+			WS_CLIENT.startRecording();
+			isRecording = true;
+			System.out.println("[OBS Annotator] Auto-started recording");
+		}
+	}
+
+	private void stopRecordingIfActive() {
+		if (isRecording && WS_CLIENT != null && WS_CLIENT.isAuthenticated()) {
+			WS_CLIENT.stopRecording();
+			isRecording = false;
+			System.out.println("[OBS Annotator] Auto-stopped recording");
+		}
 	}
 
 	public static void sendAnnotation(String text) {

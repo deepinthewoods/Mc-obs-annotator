@@ -44,12 +44,12 @@ class MarkerFilter:
                    exclude_term not in m['subtype'].lower()
             ]
 
-        # Event type filter
+        # Event type filter (match on full text e.g. "Combat - Player Death")
         if filters.get('eventTypes'):
             allowed_types = set(filters['eventTypes'])
             filtered = [
                 m for m in filtered
-                if m['type'] in allowed_types
+                if m['text'] in allowed_types
             ]
 
         # Time range filter
@@ -79,7 +79,7 @@ class MarkerFilter:
         """
         stats = {}
         for marker in markers:
-            event_type = marker['type']
+            event_type = marker['text']
             stats[event_type] = stats.get(event_type, 0) + 1
 
         return stats

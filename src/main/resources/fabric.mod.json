@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"ninja.trek.obsannotator.ObsAnnotatorClient"
+		],
+		"modmenu": [
+			"ninja.trek.obsannotator.config.ModMenuIntegration"
 		]
 	},
 	"mixins": [
@@ -36,6 +39,7 @@
 		"fabric-api": "*"
 	},
 	"suggests": {
-		"another-mod": "*"
+		"modmenu": "*",
+		"cloth-config": "*"
 	}
 }

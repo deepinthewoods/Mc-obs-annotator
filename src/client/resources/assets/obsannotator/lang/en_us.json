@@ -1,7 +1,106 @@
 {
-  "category.obsannotator": "OBS Annotator",
+  "key.categories.obsannotator.general": "OBS Annotator",
   "key.obsannotator.start": "Mark Start",
   "key.obsannotator.end": "Mark End",
   "key.obsannotator.poi_a": "Mark POI A",
-  "key.obsannotator.poi_b": "Mark POI B"
+  "key.obsannotator.poi_b": "Mark POI B",
+
+  "config.obsannotator.title": "OBS Annotator Settings",
+
+  "config.obsannotator.category.general": "General",
+  "config.obsannotator.category.combat": "Combat Events",
+  "config.obsannotator.category.boss": "Boss Events",
+  "config.obsannotator.category.block": "Block Events",
+  "config.obsannotator.category.item": "Item Events",
+  "config.obsannotator.category.exploration": "Exploration Events",
+  "config.obsannotator.category.achievement": "Achievement Events",
+  "config.obsannotator.category.fall": "Fall Events",
+  "config.obsannotator.category.explosion": "Explosion Events",
+  "config.obsannotator.category.interaction": "Interaction Events",
+
+  "config.obsannotator.obsHost": "OBS Host",
+  "config.obsannotator.obsPort": "OBS Port",
+  "config.obsannotator.obsPassword": "OBS Password",
+  "config.obsannotator.enableAutoRecording": "Enable Auto Recording",
+
+  "config.obsannotator.enableCombatEvents": "Enable Combat Events",
+  "config.obsannotator.combatEntityAttacked": "Entity Attacked",
+  "config.obsannotator.combatPlayerDeath": "Player Death",
+  "config.obsannotator.combatPlayerRespawn": "Player Respawn",
+  "config.obsannotator.combatNearDeath": "Near Death",
+  "config.obsannotator.combatDamageTaken": "Damage Taken",
+
+  "config.obsannotator.enableBossEvents": "Enable Boss Events",
+  "config.obsannotator.bossEnderDragonSpawned": "Ender Dragon Spawned",
+  "config.obsannotator.bossEnderDragonDefeated": "Ender Dragon Defeated",
+  "config.obsannotator.bossWitherSpawned": "Wither Spawned",
+  "config.obsannotator.bossWitherDefeated": "Wither Defeated",
+
+  "config.obsannotator.enableBlockEvents": "Enable Block Events",
+  "config.obsannotator.blockBroken": "Block Broken",
+  "config.obsannotator.blockPlaced": "Block Placed",
+
+  "config.obsannotator.enableItemEvents": "Enable Item Events",
+  "config.obsannotator.itemRareObtained": "Rare Item Obtained",
+  "config.obsannotator.itemUsed": "Item Used (Other)",
+  "config.obsannotator.foodEaten": "Food Eaten",
+  "config.obsannotator.potionDrunk": "Potion Drunk",
+  "config.obsannotator.bowFired": "Bow / Crossbow / Trident Fired",
+  "config.obsannotator.enderPearlThrown": "Ender Pearl Thrown",
+
+  "config.obsannotator.enableExplorationEvents": "Enable Exploration Events",
+  "config.obsannotator.explorationNewBiome": "New Biome Discovered",
+  "config.obsannotator.explorationBiomeChanged": "Biome Changed",
+  "config.obsannotator.explorationStructureEntered": "Structure Entered",
+  "config.obsannotator.biomeChangeCooldown": "Biome Change Cooldown (ms)",
+  "config.obsannotator.biomeChangeCooldown.tooltip": "Minimum time between biome change annotations in milliseconds",
+
+  "config.obsannotator.enableAchievementEvents": "Enable Achievement Events",
+  "config.obsannotator.achievementUnlocked": "Achievement Unlocked",
+
+  "config.obsannotator.enableFallEvents": "Enable Fall Events",
+  "config.obsannotator.fallLanded": "Fall Landed",
+  "config.obsannotator.fallMinDurationMs": "Min Fall Duration (ms)",
+  "config.obsannotator.fallMinDurationMs.tooltip": "Minimum fall duration in milliseconds to trigger a marker (default 1500)",
+
+  "config.obsannotator.enableExplosionEvents": "Enable Explosion Events",
+  "config.obsannotator.explosionTnt": "TNT Explosion",
+  "config.obsannotator.explosionEndCrystal": "End Crystal Explosion",
+  "config.obsannotator.explosionBed": "Bed Explosion",
+  "config.obsannotator.explosionOther": "Other Explosion",
+
+  "config.obsannotator.enableInteractionEvents": "Enable Interaction Events",
+  "config.obsannotator.interactionCrafting": "Crafting",
+  "config.obsannotator.interactionTrading": "Villager Trading",
+  "config.obsannotator.interactionEnchanting": "Enchanting",
+  "config.obsannotator.interactionPortal": "Portal / Dimension Change",
+  "config.obsannotator.interactionSleep": "Sleeping",
+  "config.obsannotator.interactionBeacon": "Beacon Activated",
+
+  "config.obsannotator.combatShieldBlock": "Shield Block",
+  "config.obsannotator.combatTotemPop": "Totem of Undying",
+  "config.obsannotator.combatLavaContact": "Lava Contact",
+  "config.obsannotator.combatOnFire": "Set On Fire",
+  "config.obsannotator.combatDrowning": "Drowning",
+
+  "config.obsannotator.itemToolBroke": "Tool Broke",
+
+  "config.obsannotator.explosionTntIgnited": "TNT Ignited",
+
+  "config.obsannotator.category.movement": "Movement Events",
+  "config.obsannotator.enableMovementEvents": "Enable Movement Events",
+  "config.obsannotator.movementElytraStart": "Elytra Flight Start",
+  "config.obsannotator.movementElytraLand": "Elytra Flight Land",
+  "config.obsannotator.movementMountRide": "Mount Ridden",
+  "config.obsannotator.movementMountDismount": "Mount Dismounted",
+
+  "config.obsannotator.category.environment": "Environment Events",
+  "config.obsannotator.enableEnvironmentEvents": "Enable Environment Events",
+  "config.obsannotator.environmentLightning": "Lightning Strike",
+  "config.obsannotator.environmentRaid": "Raid Started",
+  "config.obsannotator.environmentWardenSummoned": "Warden Summoned",
+
+  "config.obsannotator.category.statusEffect": "Status Effect Events",
+  "config.obsannotator.enableStatusEffectEvents": "Enable Status Effect Events",
+  "config.obsannotator.statusEffectApplied": "Status Effect Applied"
 }

@@ -208,4 +208,48 @@ public class ObsWebSocketClient extends WebSocketClient {
     public boolean isAuthenticated() {
         return authenticated;
     }
+
+    public void startRecording() {
+        if (!authenticated || !isOpen()) {
+            return;
+        }
+
+        try {
+            JsonObject request = new JsonObject();
+            request.addProperty("op", 6); // Request opcode
+
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("requestType", "StartRecord");
+            requestData.addProperty("requestId", UUID.randomUUID().toString());
+
+            request.add("d", requestData);
+
+            send(GSON.toJson(request));
+            System.out.println("[OBS Annotator] Sent StartRecord request");
+        } catch (Exception e) {
+            System.err.println("[OBS Annotator] Failed to start recording: " + e.getMessage());
+        }
+    }
+
+    public void stopRecording() {
+        if (!authenticated || !isOpen()) {
+            return;
+        }
+
+        try {
+            JsonObject request = new JsonObject();
+            request.addProperty("op", 6); // Request opcode
+
+            JsonObject requestData = new JsonObject();
+            requestData.addProperty("requestType", "StopRecord");
+            requestData.addProperty("requestId", UUID.randomUUID().toString());
+
+            request.add("d", requestData);
+
+            send(GSON.toJson(request));
+            System.out.println("[OBS Annotator] Sent StopRecord request");
+        } catch (Exception e) {
+            System.err.println("[OBS Annotator] Failed to stop recording: " + e.getMessage());
+        }
+    }
 }

@@ -40,7 +40,7 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
     // Event type filter
     if (filters.eventTypes && filters.eventTypes.length > 0) {
       const allowedTypes = new Set(filters.eventTypes);
-      result = result.filter(m => allowedTypes.has(m.type));
+      result = result.filter(m => allowedTypes.has(m.text));
     }
 
     // Time range filter
@@ -57,14 +57,14 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
 
   const eventTypes = useMemo(() => {
     const types = new Set<string>();
-    allMarkers.forEach(m => types.add(m.type));
+    allMarkers.forEach(m => types.add(m.text));
     return Array.from(types).sort();
   }, [allMarkers]);
 
   const filteredStatistics = useMemo(() => {
     const stats: { [key: string]: number } = {};
     filteredMarkers.forEach(marker => {
-      stats[marker.type] = (stats[marker.type] || 0) + 1;
+      stats[marker.text] = (stats[marker.text] || 0) + 1;
     });
     return stats;
   }, [filteredMarkers]);
