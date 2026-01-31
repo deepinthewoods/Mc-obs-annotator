@@ -24,6 +24,7 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	private static KeyMapping keyEnd;
 	private static KeyMapping keyPoiA;
 	private static KeyMapping keyPoiB;
+	private static KeyMapping keyNewSection;
 
 	// Auto recording state tracking
 	private boolean wasInWorld = false;
@@ -140,6 +141,12 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 			KEYBIND_CATEGORY
 		));
 
+		keyNewSection = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+			"key.obsannotator.new_section",
+			GLFW.GLFW_KEY_KP_2,
+			KEYBIND_CATEGORY
+		));
+
 		// Register tick event to check for key presses and auto recording
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (keyStart.consumeClick()) {
@@ -153,6 +160,11 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 			}
 			while (keyPoiB.consumeClick()) {
 				sendAnnotation("POI B");
+			}
+			while (keyNewSection.consumeClick()) {
+				if (CONFIG.enableSectionMarker) {
+					sendAnnotation("New Section");
+				}
 			}
 
 			// Auto recording logic

@@ -9,7 +9,8 @@ import {
   ExtractProgress,
   BatchProgress,
   TimelineInfo,
-  DEFAULT_BULK_SETTINGS
+  DEFAULT_BULK_SETTINGS,
+  DEFAULT_SILENCE_REMOVAL_SETTINGS
 } from '../types/bulk';
 import { loadPersistedSettings, savePersistedSettings } from './usePersistedSettings';
 
@@ -62,6 +63,10 @@ export const useBulkImport = () => {
       ...(persisted.skipBlackClips !== undefined && { skipBlackClips: persisted.skipBlackClips }),
       ...(persisted.createTimelines !== undefined && { createTimelines: persisted.createTimelines }),
       ...(persisted.enabledEventTypes !== undefined && { enabledEventTypes: persisted.enabledEventTypes }),
+      silenceRemoval: {
+        ...DEFAULT_SILENCE_REMOVAL_SETTINGS,
+        ...(persisted.silenceRemoval || {})
+      }
     };
   });
 
@@ -74,6 +79,7 @@ export const useBulkImport = () => {
       mergeOverlapping: settings.mergeOverlapping,
       skipBlackClips: settings.skipBlackClips,
       createTimelines: settings.createTimelines,
+      silenceRemoval: settings.silenceRemoval,
     });
   }, [settings]);
 

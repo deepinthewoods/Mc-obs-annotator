@@ -11,6 +11,7 @@ from typing import List, Dict, Optional, Callable, Generator
 from dataclasses import dataclass
 
 from bulk_scanner import Session, ClipRegion, ClipRegions
+from silence_detector import detect_silences, SilenceSettings
 
 
 def _sanitize_filename(label: str) -> str:
@@ -211,7 +212,7 @@ class ClipExtractor:
         black_percentage = self.detect_black_frames(video_file, start, end)
         return black_percentage >= threshold
 
-    def _write_sidecar(self, clip_path: str, region: ClipRegion):
+    def _write_sidecar(self, clip_path: str, region: ClipRegion, extra: dict = None):
         """Write a JSON sidecar file alongside the extracted clip."""
         sidecar_path = os.path.splitext(clip_path)[0] + '.json'
         metadata = {
@@ -221,18 +222,46 @@ class ClipExtractor:
             'regionStart': region.start,
             'regionEnd': region.end
         }
+        if extra:
+            metadata.update(extra)
         try:
             with open(sidecar_path, 'w') as f:
                 json.dump(metadata, f, indent=2)
         except Exception as e:
             print(f"Warning: failed to write sidecar {sidecar_path}: {e}")
 
+    def _run_silence_detection(self, clip_path: str, silence_settings: SilenceSettings = None):
+        """Run silence detection on a clip and return extra sidecar data."""
+        if silence_settings is None:
+            return None
+        try:
+            result = detect_silences(
+                clip_path,
+                settings=silence_settings,
+                ffmpeg_path=self.ffmpeg_path,
+                ffprobe_path=self.ffprobe_path
+            )
+            if result.speech_segments:
+                return {
+                    'speechSegments': [
+                        {'start': s.start, 'end': s.end}
+                        for s in result.speech_segments
+                    ],
+                    'totalSpeechDuration': result.total_speech_duration,
+                    'totalSilenceRemoved': result.total_silence_removed
+                }
+        except Exception as e:
+            print(f"Warning: silence detection failed for {clip_path}: {e}")
+        return None
+
     def extract_session(
         self,
         session: Session,
         output_folder: str,
         skip_black_clips: bool = True,
-        progress_callback: Optional[Callable[[ExtractionProgress], None]] = None
+        progress_callback: Optional[Callable[[ExtractionProgress], None]] = None,
+        silence_settings: Optional[SilenceSettings] = None,
+        section_markers: Optional[List[float]] = None
     ) -> ExtractResult:
         """
         Extract all clips from a session.
@@ -337,8 +366,20 @@ class ClipExtractor:
             if success:
                 extracted += 1
                 clips.append(output_path)
+                # Run silence detection for recording clips
+                extra = None
+                if region.region_type == "recording" and silence_settings is not None:
+                    extra = self._run_silence_detection(output_path, silence_settings)
+                    # Add section markers relative to this recording
+                    if section_markers and extra is not None:
+                        relative_markers = [
+                            round(m - region.start, 3)
+                            for m in section_markers
+                            if region.start <= m <= region.end
+                        ]
+                        extra['sectionMarkers'] = relative_markers
                 # Write sidecar metadata
-                self._write_sidecar(output_path, region)
+                self._write_sidecar(output_path, region, extra)
             else:
                 errors += 1
                 if progress_callback:
@@ -380,7 +421,9 @@ class ClipExtractor:
         global_clip_offset: int = 0,
         global_clip_total: int = 0,
         resume: bool = False,
-        pause_event: Optional[threading.Event] = None
+        pause_event: Optional[threading.Event] = None,
+        silence_settings: Optional[SilenceSettings] = None,
+        section_markers: Optional[List[float]] = None
     ) -> Generator[Dict, None, ExtractResult]:
         """
         Extract all clips from a session, yielding progress as a generator.
@@ -517,8 +560,19 @@ class ClipExtractor:
             if success:
                 extracted += 1
                 clips.append(output_path)
+                # Run silence detection for recording clips
+                extra = None
+                if region.region_type == "recording" and silence_settings is not None:
+                    extra = self._run_silence_detection(output_path, silence_settings)
+                    if section_markers and extra is not None:
+                        relative_markers = [
+                            round(m - region.start, 3)
+                            for m in section_markers
+                            if region.start <= m <= region.end
+                        ]
+                        extra['sectionMarkers'] = relative_markers
                 # Write sidecar metadata
-                self._write_sidecar(output_path, region)
+                self._write_sidecar(output_path, region, extra)
                 yield {
                     "type": "progress",
                     "clip": global_i,

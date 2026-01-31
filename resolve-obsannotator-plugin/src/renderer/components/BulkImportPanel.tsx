@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useBulkImport } from '../hooks/useBulkImport';
-import { Session } from '../types/bulk';
+import { Session, SilenceRemovalSettings } from '../types/bulk';
 import { loadPersistedSettings, savePersistedSettings } from '../hooks/usePersistedSettings';
 
 interface BulkImportPanelProps {
@@ -200,6 +200,90 @@ export const BulkImportPanel: React.FC<BulkImportPanelProps> = ({ isConnected })
               </label>
             </div>
           </div>
+        </div>
+
+        {/* Silence Removal Settings */}
+        <div className="bulk-settings">
+          <h3>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={bulkImport.settings.silenceRemoval.enabled}
+                onChange={(e) => bulkImport.updateSettings({
+                  silenceRemoval: { ...bulkImport.settings.silenceRemoval, enabled: e.target.checked }
+                })}
+              />
+              Silence Removal
+            </label>
+            <span className="info-text">(recording clips only)</span>
+          </h3>
+          {bulkImport.settings.silenceRemoval.enabled && (
+            <div className="settings-grid">
+              <div className="setting-row">
+                <label>Silence threshold:</label>
+                <input
+                  type="range"
+                  min={-50}
+                  max={-20}
+                  step={1}
+                  value={bulkImport.settings.silenceRemoval.silenceThresholdDb}
+                  onChange={(e) => bulkImport.updateSettings({
+                    silenceRemoval: { ...bulkImport.settings.silenceRemoval, silenceThresholdDb: parseFloat(e.target.value) }
+                  })}
+                  className="inline-input"
+                />
+                <span className="info-text">{bulkImport.settings.silenceRemoval.silenceThresholdDb} dB</span>
+              </div>
+
+              <div className="setting-row">
+                <label>Min silence duration:</label>
+                <input
+                  type="range"
+                  min={0.3}
+                  max={3.0}
+                  step={0.1}
+                  value={bulkImport.settings.silenceRemoval.minSilenceDuration}
+                  onChange={(e) => bulkImport.updateSettings({
+                    silenceRemoval: { ...bulkImport.settings.silenceRemoval, minSilenceDuration: parseFloat(e.target.value) }
+                  })}
+                  className="inline-input"
+                />
+                <span className="info-text">{bulkImport.settings.silenceRemoval.minSilenceDuration}s</span>
+              </div>
+
+              <div className="setting-row">
+                <label>Speech padding:</label>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={0.5}
+                  step={0.05}
+                  value={bulkImport.settings.silenceRemoval.padding}
+                  onChange={(e) => bulkImport.updateSettings({
+                    silenceRemoval: { ...bulkImport.settings.silenceRemoval, padding: parseFloat(e.target.value) }
+                  })}
+                  className="inline-input"
+                />
+                <span className="info-text">{bulkImport.settings.silenceRemoval.padding}s</span>
+              </div>
+
+              <div className="setting-row">
+                <label>Max silence for auto-reset:</label>
+                <input
+                  type="range"
+                  min={5}
+                  max={60}
+                  step={1}
+                  value={bulkImport.settings.silenceRemoval.maxSilenceForReset}
+                  onChange={(e) => bulkImport.updateSettings({
+                    silenceRemoval: { ...bulkImport.settings.silenceRemoval, maxSilenceForReset: parseFloat(e.target.value) }
+                  })}
+                  className="inline-input"
+                />
+                <span className="info-text">{bulkImport.settings.silenceRemoval.maxSilenceForReset}s</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Event Type Filter */}

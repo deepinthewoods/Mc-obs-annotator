@@ -38,6 +38,7 @@ class CategorizedMarkers:
     end_markers: List[Dict]  # "End" markers
     pois: List[Dict]  # "POI A" and "POI B" markers
     falls: List[Dict]  # "Fall Landed" markers
+    new_section_markers: List[Dict] = field(default_factory=list)  # "New Section" markers
 
 
 @dataclass
@@ -210,6 +211,7 @@ class BulkScanner:
         end_markers = []
         pois = []
         falls = []
+        new_section_markers = []
 
         for marker in markers:
             marker_type = marker.get('type', '').strip().lower()
@@ -220,6 +222,9 @@ class BulkScanner:
                 start_markers.append(marker)
             elif marker_type == 'end' or marker_text == 'end':
                 end_markers.append(marker)
+            # Check for New Section markers
+            elif marker_text == 'new section':
+                new_section_markers.append(marker)
             # Check for POI markers
             elif 'poi' in marker_type or 'poi' in marker_text:
                 pois.append(marker)
@@ -235,7 +240,8 @@ class BulkScanner:
             start_markers=start_markers,
             end_markers=end_markers,
             pois=pois,
-            falls=falls
+            falls=falls,
+            new_section_markers=new_section_markers
         )
 
     def build_clip_regions(self, markers: List[Dict], settings: ScanSettings) -> ClipRegions:

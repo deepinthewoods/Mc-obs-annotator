@@ -43,6 +43,11 @@ public class ObsAnnotatorConfigScreen {
                 .setSaveConsumer(val -> config.enableAutoRecording = val)
                 .build());
 
+        general.addEntry(entry.startBooleanToggle(Component.translatable("config.obsannotator.enableSectionMarker"), config.enableSectionMarker)
+                .setDefaultValue(defaults.enableSectionMarker)
+                .setSaveConsumer(val -> config.enableSectionMarker = val)
+                .build());
+
         // --- Combat Events ---
         ConfigCategory combat = builder.getOrCreateCategory(Component.translatable("config.obsannotator.category.combat"));
 

@@ -1,5 +1,13 @@
 const STORAGE_KEY = 'obsAnnotator_settings';
 
+interface PersistedSilenceRemoval {
+  enabled?: boolean;
+  silenceThresholdDb?: number;
+  minSilenceDuration?: number;
+  padding?: number;
+  maxSilenceForReset?: number;
+}
+
 interface PersistedSettings {
   sourceFolder?: string;
   outputFolder?: string;
@@ -9,6 +17,7 @@ interface PersistedSettings {
   mergeOverlapping?: boolean;
   skipBlackClips?: boolean;
   createTimelines?: boolean;
+  silenceRemoval?: PersistedSilenceRemoval;
 }
 
 export function loadPersistedSettings(): PersistedSettings {

@@ -23,6 +23,9 @@ public class ObsAnnotatorConfig {
     // Auto Recording Settings
     public boolean enableAutoRecording = true;
 
+    // Section Marker Settings
+    public boolean enableSectionMarker = true;
+
     // Event Toggle Settings
     public boolean enableCombatEvents = true;
     public boolean enableBossEvents = true;

@@ -63,6 +63,7 @@ from supercut_generator import SupercutGenerator
 from bulk_scanner import BulkScanner, ScanSettings
 from clip_extractor import ClipExtractor
 from timeline_creator import TimelineCreator
+from silence_detector import SilenceSettings
 
 app = Flask(__name__)
 CORS(app)  # Allow Electron app to connect
@@ -454,6 +455,18 @@ def bulk_process_all():
         create_timelines = settings_data.get('createTimelines', True)
         resume_processing = data.get('resume', False)
 
+        # Parse silence removal settings
+        silence_data = settings_data.get('silenceRemoval', {})
+        enable_silence_removal = silence_data.get('enabled', False)
+        silence_settings_obj = None
+        if enable_silence_removal:
+            silence_settings_obj = SilenceSettings(
+                silence_threshold_db=silence_data.get('silenceThresholdDb', -30.0),
+                min_silence_duration=silence_data.get('minSilenceDuration', 0.8),
+                padding=silence_data.get('padding', 0.15),
+                max_silence_for_reset=silence_data.get('maxSilenceForReset', 15.0)
+            )
+
         # Ensure pause event is set (running) at start of new batch
         bulk_pause_event.set()
 
@@ -494,6 +507,15 @@ def bulk_process_all():
             global_clip_offset = 0
 
             for session in sessions:
+                # Collect section marker times for this session
+                session_section_markers = None
+                if silence_settings_obj is not None:
+                    categorized = bulk_scanner.categorize_markers(session.markers)
+                    session_section_markers = [
+                        m['timestampSeconds']
+                        for m in categorized.new_section_markers
+                    ]
+
                 # Extract clips into the shared folder
                 for progress in clip_extractor.extract_session_streaming(
                     session,
@@ -506,7 +528,9 @@ def bulk_process_all():
                     global_clip_offset=global_clip_offset,
                     global_clip_total=total_clips_all,
                     resume=resume_processing,
-                    pause_event=bulk_pause_event
+                    pause_event=bulk_pause_event,
+                    silence_settings=silence_settings_obj,
+                    section_markers=session_section_markers
                 ):
                     yield f"data: {json.dumps(progress)}\n\n"
 
@@ -554,6 +578,28 @@ def bulk_process_all():
             'success': False,
             'error': str(e)
         }), 400
+
+
+@app.route('/api/silence-settings', methods=['GET', 'POST'])
+def silence_settings():
+    """Get or set silence detection parameters."""
+    if request.method == 'GET':
+        defaults = SilenceSettings()
+        return jsonify({
+            'success': True,
+            'settings': {
+                'silenceThresholdDb': defaults.silence_threshold_db,
+                'minSilenceDuration': defaults.min_silence_duration,
+                'padding': defaults.padding,
+                'maxSilenceForReset': defaults.max_silence_for_reset
+            }
+        })
+    else:
+        data = request.json
+        return jsonify({
+            'success': True,
+            'settings': data
+        })
 
 
 # ============================================================================

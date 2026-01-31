@@ -5,6 +5,7 @@ Timeline Creator - Create DaVinci Resolve timelines from extracted clips.
 import json
 import os
 from typing import List, Dict, Optional, Any
+from silence_detector import SilenceSettings
 
 
 class TimelineCreator:
@@ -359,15 +360,43 @@ class TimelineCreator:
                 for i, recording_file in enumerate(recording_files, 1):
                     items = self.media_pool.ImportMedia([recording_file])
                     if items:
-                        timeline_name = f"{session_name} - Recording {i}"
-                        timeline = self.create_timeline(timeline_name, items)
-                        if timeline:
-                            duration = self._get_timeline_duration(timeline)
-                            timelines_created.append({
-                                "name": timeline_name,
-                                "clips": 1,
-                                "duration": self._format_duration(duration)
-                            })
+                        # Check sidecar for silence data
+                        meta = self._load_clip_metadata(recording_file)
+                        speech_segments = meta.get('speechSegments') if meta else None
+                        section_markers_data = meta.get('sectionMarkers', []) if meta else []
+
+                        if speech_segments:
+                            # Create dual audio track timeline
+                            timeline_name = f"{session_name} - Recording {i}"
+                            timeline = self.create_recording_timeline_with_silence_removal(
+                                timeline_name,
+                                recording_file,
+                                items[0],
+                                speech_segments,
+                                section_markers_data
+                            )
+                            if timeline:
+                                duration = self._get_timeline_duration(timeline)
+                                timelines_created.append({
+                                    "name": timeline_name,
+                                    "clips": 1,
+                                    "duration": self._format_duration(duration),
+                                    "silenceRemoval": True,
+                                    "speechSegments": len(speech_segments),
+                                    "totalSpeech": meta.get('totalSpeechDuration', 0),
+                                    "totalSilenceRemoved": meta.get('totalSilenceRemoved', 0)
+                                })
+                        else:
+                            # Standard single-clip timeline
+                            timeline_name = f"{session_name} - Recording {i}"
+                            timeline = self.create_timeline(timeline_name, items)
+                            if timeline:
+                                duration = self._get_timeline_duration(timeline)
+                                timelines_created.append({
+                                    "name": timeline_name,
+                                    "clips": 1,
+                                    "duration": self._format_duration(duration)
+                                })
 
         # 3. Import and create POI timelines
         pois_folder = os.path.join(session_folder, "pois")
@@ -394,6 +423,162 @@ class TimelineCreator:
                             })
 
         return timelines_created
+
+    def create_recording_timeline_with_silence_removal(
+        self,
+        timeline_name: str,
+        recording_file: str,
+        media_item,
+        speech_segments: List[Dict],
+        section_markers: List[float],
+        silence_settings: Optional[SilenceSettings] = None
+    ) -> Optional[Any]:
+        """
+        Create a recording timeline with dual audio tracks for silence removal.
+
+        Creates:
+        - V1 + A1: Full clip (video + original audio, untouched)
+        - A2: Gapped speech segments (audio at original positions with gaps)
+        - A3: Compressed speech segments (shifted within sections)
+
+        Args:
+            timeline_name: Name for the timeline
+            recording_file: Path to the recording clip file
+            media_item: MediaPoolItem for the recording
+            speech_segments: List of {"start": float, "end": float} dicts
+            section_markers: List of section marker times (clip-relative)
+            silence_settings: Settings for section break detection
+
+        Returns:
+            Timeline object or None
+        """
+        if not speech_segments:
+            return None
+
+        if silence_settings is None:
+            silence_settings = SilenceSettings()
+
+        # Create empty timeline
+        timeline = self.media_pool.CreateEmptyTimeline(timeline_name)
+        if not timeline:
+            return None
+
+        # Get framerate
+        framerate = float(timeline.GetSetting('timelineFrameRate'))
+
+        # 1. Place full clip on V1+A1 (video + audio)
+        clip_info = {
+            "mediaPoolItem": media_item,
+            "trackIndex": 1
+        }
+        self.media_pool.AppendToTimeline([clip_info])
+
+        # 2. Build sections from speech segments using section markers and max_silence
+        sections = self._build_sections(
+            speech_segments,
+            section_markers,
+            silence_settings.max_silence_for_reset
+        )
+
+        # 3. Place A2 (gapped) - speech segments at original positions
+        for seg in speech_segments:
+            src_start_frame = int(seg['start'] * framerate)
+            src_end_frame = int(seg['end'] * framerate)
+            record_frame = int(seg['start'] * framerate)
+
+            audio_clip_info = {
+                "mediaPoolItem": media_item,
+                "startFrame": src_start_frame,
+                "endFrame": src_end_frame,
+                "mediaType": 2,  # audio only
+                "trackIndex": 2,
+                "recordFrame": record_frame
+            }
+            self.media_pool.AppendToTimeline([audio_clip_info])
+
+        # 4. Place A3 (compressed) - speech shifted within sections
+        for section in sections:
+            offset = 0.0  # cumulative silence removed within this section
+
+            for i, seg in enumerate(section):
+                src_start_frame = int(seg['start'] * framerate)
+                src_end_frame = int(seg['end'] * framerate)
+
+                if i == 0:
+                    # First segment: place at original position (synced)
+                    place_at = seg['start']
+                else:
+                    # Subsequent: slide left by accumulated silence
+                    gap = seg['start'] - section[i - 1]['end']
+                    offset += gap
+                    place_at = seg['start'] - offset
+
+                record_frame = int(place_at * framerate)
+
+                audio_clip_info = {
+                    "mediaPoolItem": media_item,
+                    "startFrame": src_start_frame,
+                    "endFrame": src_end_frame,
+                    "mediaType": 2,  # audio only
+                    "trackIndex": 3,
+                    "recordFrame": record_frame
+                }
+                self.media_pool.AppendToTimeline([audio_clip_info])
+
+        return timeline
+
+    def _build_sections(
+        self,
+        speech_segments: List[Dict],
+        section_markers: List[float],
+        max_silence_for_reset: float
+    ) -> List[List[Dict]]:
+        """
+        Split speech segments into sections based on markers and long silences.
+
+        A new section starts when:
+        - A "New Section" marker falls between the previous segment end and current segment start
+        - The silence gap between segments exceeds max_silence_for_reset
+
+        Args:
+            speech_segments: List of {"start": float, "end": float} dicts
+            section_markers: List of section marker times (clip-relative seconds)
+            max_silence_for_reset: Maximum silence gap before auto-reset
+
+        Returns:
+            List of sections, each section is a list of speech segment dicts
+        """
+        if not speech_segments:
+            return []
+
+        sorted_markers = sorted(section_markers) if section_markers else []
+        sections = []
+        current_section = [speech_segments[0]]
+        prev_end = speech_segments[0]['end']
+
+        for seg in speech_segments[1:]:
+            gap = seg['start'] - prev_end
+
+            # Check if any section marker falls in the gap
+            has_marker = any(
+                prev_end <= m <= seg['start']
+                for m in sorted_markers
+            )
+
+            if has_marker or gap >= max_silence_for_reset:
+                # Start new section
+                sections.append(current_section)
+                current_section = [seg]
+            else:
+                current_section.append(seg)
+
+            prev_end = seg['end']
+
+        # Don't forget last section
+        if current_section:
+            sections.append(current_section)
+
+        return sections
 
     def _get_sorted_clips(self, folder: str) -> List[str]:
         """Get clip files from a folder, sorted by name."""

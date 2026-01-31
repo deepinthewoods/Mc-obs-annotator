@@ -4,6 +4,7 @@
   "key.obsannotator.end": "Mark End",
   "key.obsannotator.poi_a": "Mark POI A",
   "key.obsannotator.poi_b": "Mark POI B",
+  "key.obsannotator.new_section": "Mark New Section",
 
   "config.obsannotator.title": "OBS Annotator Settings",
 
@@ -22,6 +23,7 @@
   "config.obsannotator.obsPort": "OBS Port",
   "config.obsannotator.obsPassword": "OBS Password",
   "config.obsannotator.enableAutoRecording": "Enable Auto Recording",
+  "config.obsannotator.enableSectionMarker": "Enable Section Marker",
 
   "config.obsannotator.enableCombatEvents": "Enable Combat Events",
   "config.obsannotator.combatEntityAttacked": "Entity Attacked",

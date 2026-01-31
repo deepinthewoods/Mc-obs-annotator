@@ -95,6 +95,14 @@ export interface BulkCreateTimelinesResponse {
   error?: string;
 }
 
+export interface SilenceRemovalSettings {
+  enabled: boolean;
+  silenceThresholdDb: number;
+  minSilenceDuration: number;
+  padding: number;
+  maxSilenceForReset: number;
+}
+
 export interface BulkSettings {
   chapterBuffer: number;
   poiDuration: number;
@@ -102,6 +110,7 @@ export interface BulkSettings {
   skipBlackClips: boolean;
   createTimelines: boolean;
   enabledEventTypes: string[];
+  silenceRemoval: SilenceRemovalSettings;
 }
 
 export interface BulkProcessAllRequest {
@@ -197,11 +206,20 @@ export interface SupercutFromClipsRequest {
   };
 }
 
+export const DEFAULT_SILENCE_REMOVAL_SETTINGS: SilenceRemovalSettings = {
+  enabled: false,
+  silenceThresholdDb: -30,
+  minSilenceDuration: 0.8,
+  padding: 0.15,
+  maxSilenceForReset: 15.0
+};
+
 export const DEFAULT_BULK_SETTINGS: BulkSettings = {
   chapterBuffer: 0.5,
   poiDuration: 180,
   mergeOverlapping: true,
   skipBlackClips: true,
   createTimelines: true,
-  enabledEventTypes: []
+  enabledEventTypes: [],
+  silenceRemoval: { ...DEFAULT_SILENCE_REMOVAL_SETTINGS }
 };
