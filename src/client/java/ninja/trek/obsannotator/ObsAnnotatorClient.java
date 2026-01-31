@@ -4,7 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
 import ninja.trek.obsannotator.events.*;
 import ninja.trek.obsannotator.websocket.ObsWebSocketClient;
@@ -17,7 +17,7 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 
 	// Custom keybinding category
 	private static final KeyMapping.Category KEYBIND_CATEGORY =
-		KeyMapping.Category.register(ResourceLocation.fromNamespaceAndPath("obsannotator", "general"));
+		KeyMapping.Category.register(Identifier.fromNamespaceAndPath("obsannotator", "general"));
 
 	// Keybindings
 	private static KeyMapping keyStart;
@@ -55,6 +55,12 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		MovementEventHandler.register();
 		EnvironmentEventHandler.register();
 		StatusEffectEventHandler.register();
+
+		// Test mode support
+		if (TestModeHandler.isTestMode()) {
+			TestModeHandler.register();
+			System.out.println("[OBS Annotator] TEST MODE ACTIVE");
+		}
 
 		System.out.println("[OBS Annotator] Initialized successfully");
 	}

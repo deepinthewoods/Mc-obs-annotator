@@ -25,6 +25,13 @@ loom {
 		}
 	}
 
+	runs {
+		testMode {
+			client()
+			name "Test Mode Client"
+			vmArg "-Dobs.annotator.testmode=true"
+		}
+	}
 }
 
 dependencies {
