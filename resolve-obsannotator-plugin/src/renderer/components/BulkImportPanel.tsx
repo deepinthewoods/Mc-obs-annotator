@@ -155,20 +155,6 @@ export const BulkImportPanel: React.FC<BulkImportPanelProps> = ({ isConnected })
               <span className="info-text">seconds before/after</span>
             </div>
 
-            <div className="setting-row">
-              <label>POI duration:</label>
-              <input
-                type="number"
-                value={bulkImport.settings.poiDuration}
-                onChange={(e) => bulkImport.updateSettings({ poiDuration: parseFloat(e.target.value) })}
-                min={30}
-                max={600}
-                step={30}
-                className="inline-input"
-              />
-              <span className="info-text">seconds before marker</span>
-            </div>
-
             <div className="checkbox-options">
               <label className="checkbox-label">
                 <input

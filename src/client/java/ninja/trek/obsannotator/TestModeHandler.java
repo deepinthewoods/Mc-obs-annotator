@@ -14,8 +14,9 @@ public class TestModeHandler {
     private static final List<String> MARKERS = List.of(
         "Start",
         "End",
-        "POI A",
-        "POI B",
+        "POI 1m",
+        "POI 3m",
+        "POI 5m",
         "Entity Attacked - Zombie",
         "Combat - Player Death",
         "Combat - Player Respawn",

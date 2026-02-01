@@ -23,8 +23,9 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	// Keybindings
 	private static KeyMapping keyStart;
 	private static KeyMapping keyEnd;
-	private static KeyMapping keyPoiA;
-	private static KeyMapping keyPoiB;
+	private static KeyMapping keyPoi1m;
+	private static KeyMapping keyPoi3m;
+	private static KeyMapping keyPoi5m;
 	private static KeyMapping keyNewSection;
 
 	// Auto recording state tracking
@@ -133,25 +134,31 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	private void registerKeybindings() {
 		keyStart = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.start",
-			GLFW.GLFW_KEY_KP_7,
+			GLFW.GLFW_KEY_KP_1,
 			KEYBIND_CATEGORY
 		));
 
 		keyEnd = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 			"key.obsannotator.end",
+			GLFW.GLFW_KEY_KP_3,
+			KEYBIND_CATEGORY
+		));
+
+		keyPoi1m = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+			"key.obsannotator.poi_1m",
+			GLFW.GLFW_KEY_KP_7,
+			KEYBIND_CATEGORY
+		));
+
+		keyPoi3m = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+			"key.obsannotator.poi_3m",
+			GLFW.GLFW_KEY_KP_8,
+			KEYBIND_CATEGORY
+		));
+
+		keyPoi5m = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+			"key.obsannotator.poi_5m",
 			GLFW.GLFW_KEY_KP_9,
-			KEYBIND_CATEGORY
-		));
-
-		keyPoiA = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-			"key.obsannotator.poi_a",
-			GLFW.GLFW_KEY_KP_4,
-			KEYBIND_CATEGORY
-		));
-
-		keyPoiB = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-			"key.obsannotator.poi_b",
-			GLFW.GLFW_KEY_KP_6,
 			KEYBIND_CATEGORY
 		));
 
@@ -169,11 +176,14 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 			while (keyEnd.consumeClick()) {
 				sendAnnotation("End");
 			}
-			while (keyPoiA.consumeClick()) {
-				sendAnnotation("POI A");
+			while (keyPoi1m.consumeClick()) {
+				sendAnnotation("POI 1m");
 			}
-			while (keyPoiB.consumeClick()) {
-				sendAnnotation("POI B");
+			while (keyPoi3m.consumeClick()) {
+				sendAnnotation("POI 3m");
+			}
+			while (keyPoi5m.consumeClick()) {
+				sendAnnotation("POI 5m");
 			}
 			while (keyNewSection.consumeClick()) {
 				if (CONFIG.enableSectionMarker) {

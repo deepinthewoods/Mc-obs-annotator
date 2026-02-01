@@ -13,7 +13,6 @@ interface PersistedSettings {
   outputFolder?: string;
   enabledEventTypes?: string[];
   chapterBuffer?: number;
-  poiDuration?: number;
   mergeOverlapping?: boolean;
   skipBlackClips?: boolean;
   createTimelines?: boolean;

@@ -2,8 +2,9 @@
   "key.categories.obsannotator.general": "OBS Annotator",
   "key.obsannotator.start": "Mark Start",
   "key.obsannotator.end": "Mark End",
-  "key.obsannotator.poi_a": "Mark POI A",
-  "key.obsannotator.poi_b": "Mark POI B",
+  "key.obsannotator.poi_1m": "Mark POI 1m",
+  "key.obsannotator.poi_3m": "Mark POI 3m",
+  "key.obsannotator.poi_5m": "Mark POI 5m",
   "key.obsannotator.new_section": "Mark New Section",
 
   "config.obsannotator.title": "OBS Annotator Settings",

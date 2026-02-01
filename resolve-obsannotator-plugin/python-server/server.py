@@ -305,7 +305,6 @@ def bulk_analyze():
 
         settings = ScanSettings(
             chapter_buffer=settings_data.get('chapterBuffer', 0.5),
-            poi_duration=settings_data.get('poiDuration', 180.0),
             merge_overlapping=settings_data.get('mergeOverlapping', True),
             enabled_event_types=enabled_types if enabled_types else None
         )
@@ -447,7 +446,6 @@ def bulk_process_all():
 
         settings = ScanSettings(
             chapter_buffer=settings_data.get('chapterBuffer', 0.5),
-            poi_duration=settings_data.get('poiDuration', 180.0),
             merge_overlapping=settings_data.get('mergeOverlapping', True),
             enabled_event_types=enabled_types if enabled_types else None
         )

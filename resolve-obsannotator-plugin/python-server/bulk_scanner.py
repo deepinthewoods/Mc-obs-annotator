@@ -36,7 +36,7 @@ class CategorizedMarkers:
     chapters: List[Dict]  # Regular chapter markers (Combat, Boss, etc.)
     start_markers: List[Dict]  # "Start" markers
     end_markers: List[Dict]  # "End" markers
-    pois: List[Dict]  # "POI A" and "POI B" markers
+    pois: List[Dict]  # POI markers (e.g. "POI 1m", "POI 3m", "POI 5m")
     falls: List[Dict]  # "Fall Landed" markers
     new_section_markers: List[Dict] = field(default_factory=list)  # "New Section" markers
 
@@ -67,7 +67,6 @@ class Session:
 class ScanSettings:
     """Settings for clip extraction."""
     chapter_buffer: float = 0.5  # Seconds before/after chapter markers
-    poi_duration: float = 180.0  # 3 minutes for POI markers
     merge_overlapping: bool = True
     enabled_event_types: Optional[List[str]] = None  # None means all enabled
     fall_buffer_extra: float = 2.0  # Extra seconds before/after fall duration
@@ -278,10 +277,9 @@ class BulkScanner:
             categorized.end_markers
         )
 
-        # Build POI regions (3 minutes before marker)
+        # Build POI regions (duration parsed from marker text)
         poi_regions = self._build_poi_regions(
-            categorized.pois,
-            settings.poi_duration
+            categorized.pois
         )
 
         # Build fall regions (duration-aware buffer)
@@ -350,26 +348,50 @@ class BulkScanner:
 
     def _build_poi_regions(
         self,
-        pois: List[Dict],
-        poi_duration: float
+        pois: List[Dict]
     ) -> List[ClipRegion]:
-        """Build POI regions (duration before marker)."""
+        """Build POI regions with duration parsed from marker text.
+
+        Parses "POI Xm" to get X minutes. Falls back to 180s (3 min).
+        After building individual regions, merges overlapping ones.
+        """
         regions = []
 
         for marker in pois:
             timestamp = marker['timestampSeconds']
-            start = max(0, timestamp - poi_duration)
+            text = marker.get('text', '')
+
+            # Parse duration from text: "POI 1m", "POI 3m", "POI 5m", etc.
+            match = re.search(r'POI\s+(\d+)m', text, re.IGNORECASE)
+            duration = float(match.group(1)) * 60 if match else 180.0
+
+            start = max(0, timestamp - duration)
             end = timestamp
 
             regions.append(ClipRegion(
                 start=start,
                 end=end,
-                markers=[marker['text']],
+                markers=[text],
                 region_type="poi",
-                label=marker['text']
+                label=text
             ))
 
-        return regions
+        if not regions:
+            return regions
+
+        # Sort by start time and merge overlapping regions
+        regions.sort(key=lambda r: r.start)
+        merged = [regions[0]]
+        for current in regions[1:]:
+            last = merged[-1]
+            if current.start <= last.end:
+                last.end = max(last.end, current.end)
+                last.markers.extend(current.markers)
+                last.label = " + ".join(last.markers)
+            else:
+                merged.append(current)
+
+        return merged
 
     def _build_fall_regions(
         self,

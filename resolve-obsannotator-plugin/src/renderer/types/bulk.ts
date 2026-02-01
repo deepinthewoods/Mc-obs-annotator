@@ -105,7 +105,6 @@ export interface SilenceRemovalSettings {
 
 export interface BulkSettings {
   chapterBuffer: number;
-  poiDuration: number;
   mergeOverlapping: boolean;
   skipBlackClips: boolean;
   createTimelines: boolean;
@@ -216,7 +215,6 @@ export const DEFAULT_SILENCE_REMOVAL_SETTINGS: SilenceRemovalSettings = {
 
 export const DEFAULT_BULK_SETTINGS: BulkSettings = {
   chapterBuffer: 0.5,
-  poiDuration: 180,
   mergeOverlapping: true,
   skipBlackClips: true,
   createTimelines: true,

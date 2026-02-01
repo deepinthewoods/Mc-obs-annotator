@@ -58,7 +58,6 @@ export const useBulkImport = () => {
     return {
       ...DEFAULT_BULK_SETTINGS,
       ...(persisted.chapterBuffer !== undefined && { chapterBuffer: persisted.chapterBuffer }),
-      ...(persisted.poiDuration !== undefined && { poiDuration: persisted.poiDuration }),
       ...(persisted.mergeOverlapping !== undefined && { mergeOverlapping: persisted.mergeOverlapping }),
       ...(persisted.skipBlackClips !== undefined && { skipBlackClips: persisted.skipBlackClips }),
       ...(persisted.createTimelines !== undefined && { createTimelines: persisted.createTimelines }),
@@ -75,7 +74,6 @@ export const useBulkImport = () => {
     savePersistedSettings({
       enabledEventTypes: settings.enabledEventTypes,
       chapterBuffer: settings.chapterBuffer,
-      poiDuration: settings.poiDuration,
       mergeOverlapping: settings.mergeOverlapping,
       skipBlackClips: settings.skipBlackClips,
       createTimelines: settings.createTimelines,
@@ -210,7 +208,6 @@ export const useBulkImport = () => {
           sessionId,
           settings: {
             chapterBuffer: settings.chapterBuffer,
-            poiDuration: settings.poiDuration,
             mergeOverlapping: settings.mergeOverlapping
           }
         })
