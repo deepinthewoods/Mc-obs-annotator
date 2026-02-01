@@ -409,6 +409,16 @@ class ClipExtractor:
             clips=clips
         )
 
+    @staticmethod
+    def _multicam_output_path(main_output_path: str, prefix: str) -> str:
+        """Generate spectator output path by prepending prefix.
+
+        e.g. '/out/chapters/Combat/Combat_001.mkv' -> '/out/chapters/Combat/spec1_Combat_001.mkv'
+        """
+        directory = os.path.dirname(main_output_path)
+        filename = os.path.basename(main_output_path)
+        return os.path.join(directory, f"{prefix}_{filename}")
+
     def extract_session_streaming(
         self,
         session: Session,
@@ -499,13 +509,18 @@ class ClipExtractor:
             for i, r in enumerate(session.clip_regions.pois, poi_offset + 1)
         ])
 
-        total_clips = len(all_regions)
+        # Calculate total clips including multicam angles
+        multicam_files = getattr(session, 'multicam_files', []) or []
+        multicam_multiplier = 1 + len(multicam_files)
+        total_clips = len(all_regions) * multicam_multiplier
         report_total = global_clip_total if global_clip_total > 0 else total_clips
 
         skipped_existing = 0
+        clip_counter = 0  # Tracks progress across main + multicam clips
 
         for i, (region, subfolder, filename) in enumerate(all_regions, 1):
-            global_i = global_clip_offset + i
+            clip_counter += 1
+            global_i = global_clip_offset + clip_counter
             output_path = os.path.join(session_folder, subfolder, filename)
             sidecar_path = os.path.splitext(output_path)[0] + '.json'
 
@@ -525,6 +540,22 @@ class ClipExtractor:
                     "status": "skipped_existing",
                     "file": filename
                 }
+                # Also skip-check multicam angles in resume mode
+                for cam in multicam_files:
+                    clip_counter += 1
+                    angle_output = self._multicam_output_path(output_path, cam['prefix'])
+                    angle_filename = os.path.basename(angle_output)
+                    angle_global_i = global_clip_offset + clip_counter
+                    if os.path.isfile(angle_output):
+                        extracted += 1
+                        clips.append(angle_output)
+                        yield {
+                            "type": "progress",
+                            "clip": angle_global_i,
+                            "total": report_total,
+                            "status": "skipped_existing",
+                            "file": angle_filename
+                        }
                 continue
 
             # Check for black frames if requested
@@ -538,6 +569,8 @@ class ClipExtractor:
                         "status": "skipped_black",
                         "file": filename
                     }
+                    # Skip multicam angles too (same region will be black)
+                    clip_counter += len(multicam_files)
                     continue
 
             # Report progress
@@ -571,7 +604,7 @@ class ClipExtractor:
                             if region.start <= m <= region.end
                         ]
                         extra['sectionMarkers'] = relative_markers
-                # Write sidecar metadata
+                # Write sidecar metadata (shared for all angles)
                 self._write_sidecar(output_path, region, extra)
                 yield {
                     "type": "progress",
@@ -580,6 +613,64 @@ class ClipExtractor:
                     "status": "extracted",
                     "file": filename
                 }
+
+                # Extract same region from each spectator angle
+                for cam in multicam_files:
+                    clip_counter += 1
+                    angle_output = self._multicam_output_path(output_path, cam['prefix'])
+                    angle_filename = os.path.basename(angle_output)
+                    angle_global_i = global_clip_offset + clip_counter
+
+                    if pause_event is not None:
+                        pause_event.wait()
+
+                    # Resume: skip if already exists
+                    if resume and os.path.isfile(angle_output):
+                        extracted += 1
+                        clips.append(angle_output)
+                        yield {
+                            "type": "progress",
+                            "clip": angle_global_i,
+                            "total": report_total,
+                            "status": "skipped_existing",
+                            "file": angle_filename
+                        }
+                        continue
+
+                    yield {
+                        "type": "progress",
+                        "clip": angle_global_i,
+                        "total": report_total,
+                        "status": "extracting",
+                        "file": angle_filename
+                    }
+
+                    angle_success = self.extract_clip(
+                        cam['file'],
+                        region.start,
+                        region.end,
+                        angle_output
+                    )
+
+                    if angle_success:
+                        extracted += 1
+                        clips.append(angle_output)
+                        yield {
+                            "type": "progress",
+                            "clip": angle_global_i,
+                            "total": report_total,
+                            "status": "extracted",
+                            "file": angle_filename
+                        }
+                    else:
+                        errors += 1
+                        yield {
+                            "type": "progress",
+                            "clip": angle_global_i,
+                            "total": report_total,
+                            "status": "error",
+                            "file": angle_filename
+                        }
             else:
                 errors += 1
                 yield {
@@ -589,6 +680,8 @@ class ClipExtractor:
                     "status": "error",
                     "file": filename
                 }
+                # Skip multicam angles if main extraction failed
+                clip_counter += len(multicam_files)
 
         # Only yield completion if not in shared/merged mode (caller handles it)
         if not shared_folder:
@@ -609,5 +702,5 @@ class ClipExtractor:
             chapter_label_counters=chapter_label_counters,
             recording_count=recording_offset + len(session.clip_regions.recordings),
             poi_count=poi_offset + len(session.clip_regions.pois),
-            local_clip_count=total_clips
+            local_clip_count=clip_counter
         )

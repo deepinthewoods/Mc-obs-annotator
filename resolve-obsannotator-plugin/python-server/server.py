@@ -60,7 +60,7 @@ def _try_import_resolve_script():
 from edl_parser import EdlParser
 from marker_filter import MarkerFilter
 from supercut_generator import SupercutGenerator
-from bulk_scanner import BulkScanner, ScanSettings
+from bulk_scanner import BulkScanner, ScanSettings, MulticamConfig
 from clip_extractor import ClipExtractor
 from timeline_creator import TimelineCreator
 from silence_detector import SilenceSettings
@@ -267,7 +267,16 @@ def bulk_scan():
         source_folder = data['sourceFolder']
         recursive = data.get('recursive', False)
 
-        sessions = bulk_scanner.scan_folder(source_folder, recursive)
+        # Parse multicam config if provided
+        multicam_data = data.get('multicam', {})
+        multicam_config = None
+        if multicam_data.get('enabled'):
+            multicam_config = MulticamConfig(
+                enabled=True,
+                tracks=multicam_data.get('tracks', [])
+            )
+
+        sessions = bulk_scanner.scan_folder(source_folder, recursive, multicam_config)
 
         # Calculate total size
         total_size = sum(s.video_size for s in sessions)
@@ -453,6 +462,15 @@ def bulk_process_all():
         create_timelines = settings_data.get('createTimelines', True)
         resume_processing = data.get('resume', False)
 
+        # Parse multicam config
+        multicam_data = settings_data.get('multicam', {})
+        multicam_config = None
+        if multicam_data.get('enabled'):
+            multicam_config = MulticamConfig(
+                enabled=True,
+                tracks=multicam_data.get('tracks', [])
+            )
+
         # Parse silence removal settings
         silence_data = settings_data.get('silenceRemoval', {})
         enable_silence_removal = silence_data.get('enabled', False)
@@ -476,7 +494,8 @@ def bulk_process_all():
                 if s:
                     sessions.append(s)
         else:
-            sessions = bulk_scanner.scan_folder(source_folder, recursive=False)
+            sessions = bulk_scanner.scan_folder(source_folder, recursive=False,
+                                                    multicam_config=multicam_config)
 
         def generate():
             """Generator for SSE streaming."""
@@ -487,12 +506,14 @@ def bulk_process_all():
             total_clips_all = 0
             for session in sessions:
                 if session.clip_regions:
-                    total_clips_all += (
+                    num_regions = (
                         len(session.clip_regions.chapters)
                         + len(session.clip_regions.recordings)
                         + len(session.clip_regions.pois)
                         + len(session.clip_regions.falls)
                     )
+                    multicam_multiplier = 1 + len(session.multicam_files) if session.multicam_files else 1
+                    total_clips_all += num_regions * multicam_multiplier
 
             # Shared output folder — all clips go here (no per-video subfolder)
             shared_folder = output_folder
@@ -534,13 +555,14 @@ def bulk_process_all():
 
                 # Update offsets for the next session
                 if session.clip_regions:
-                    local_clips = (
+                    local_regions = (
                         len(session.clip_regions.chapters)
                         + len(session.clip_regions.recordings)
                         + len(session.clip_regions.pois)
                         + len(session.clip_regions.falls)
                     )
-                    global_clip_offset += local_clips
+                    session_multicam_multiplier = 1 + len(session.multicam_files) if session.multicam_files else 1
+                    global_clip_offset += local_regions * session_multicam_multiplier
                     recording_offset += len(session.clip_regions.recordings)
                     poi_offset += len(session.clip_regions.pois)
 
@@ -555,7 +577,16 @@ def bulk_process_all():
                     combined_name = os.path.basename(source_folder.rstrip('/\\')) or 'Combined'
 
                     creator = TimelineCreator(resolve, project)
-                    timelines = creator.create_session_timelines(shared_folder, combined_name, settings.chapter_buffer)
+                    multicam_config_dict = None
+                    if multicam_config:
+                        multicam_config_dict = {
+                            'enabled': multicam_config.enabled,
+                            'tracks': multicam_config.tracks
+                        }
+                    timelines = creator.create_session_timelines(
+                        shared_folder, combined_name, settings.chapter_buffer,
+                        multicam_config=multicam_config_dict
+                    )
 
                     yield f"data: {json.dumps({'type': 'timelines_created', 'timelines': timelines})}\n\n"
 

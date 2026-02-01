@@ -1,3 +1,5 @@
+import { MulticamConfig } from '../types/bulk';
+
 const STORAGE_KEY = 'obsAnnotator_settings';
 
 interface PersistedSilenceRemoval {
@@ -17,6 +19,7 @@ interface PersistedSettings {
   skipBlackClips?: boolean;
   createTimelines?: boolean;
   silenceRemoval?: PersistedSilenceRemoval;
+  multicam?: MulticamConfig;
 }
 
 export function loadPersistedSettings(): PersistedSettings {

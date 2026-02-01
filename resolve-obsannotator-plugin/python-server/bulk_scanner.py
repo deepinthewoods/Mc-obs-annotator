@@ -51,6 +51,14 @@ class ClipRegions:
 
 
 @dataclass
+class MulticamConfig:
+    """Mapping of filename prefixes to camera numbers."""
+    enabled: bool = False
+    # List of {"prefix": "spec1", "trackName": "Spectator 1", "cameraNumber": 2}
+    tracks: List[Dict] = field(default_factory=list)
+
+
+@dataclass
 class Session:
     """A video+EDL session."""
     id: str
@@ -61,6 +69,9 @@ class Session:
     markers: List[Dict] = field(default_factory=list)
     marker_summary: Dict = field(default_factory=dict)
     clip_regions: Optional[ClipRegions] = None
+    # Spectator camera files grouped with this session
+    # Each entry: {"prefix": "spec1", "file": "/path/to/spec1_timestamp.mkv", "cameraNumber": 2}
+    multicam_files: List[Dict] = field(default_factory=list)
 
 
 @dataclass
@@ -79,13 +90,15 @@ class BulkScanner:
         self.parser = EdlParser()
         self.sessions: Dict[str, Session] = {}  # Session cache
 
-    def scan_folder(self, source_folder: str, recursive: bool = False) -> List[Session]:
+    def scan_folder(self, source_folder: str, recursive: bool = False,
+                     multicam_config: Optional[MulticamConfig] = None) -> List[Session]:
         """
         Scan a folder for MKV+EDL pairs.
 
         Args:
             source_folder: Path to folder containing recordings
             recursive: Whether to search subdirectories
+            multicam_config: Optional multicam configuration for grouping spectator files
 
         Returns:
             List of Session objects
@@ -94,10 +107,10 @@ class BulkScanner:
 
         if recursive:
             for root, dirs, files in os.walk(source_folder):
-                sessions.extend(self._scan_directory(root, files))
+                sessions.extend(self._scan_directory(root, files, multicam_config))
         else:
             files = os.listdir(source_folder)
-            sessions.extend(self._scan_directory(source_folder, files))
+            sessions.extend(self._scan_directory(source_folder, files, multicam_config))
 
         # Cache sessions
         for session in sessions:
@@ -105,31 +118,93 @@ class BulkScanner:
 
         return sessions
 
-    def _scan_directory(self, directory: str, files: List[str]) -> List[Session]:
+    def _scan_directory(self, directory: str, files: List[str],
+                         multicam_config: Optional[MulticamConfig] = None) -> List[Session]:
         """Scan a single directory for MKV+EDL pairs."""
         sessions = []
 
         # Find all video files
         video_files = [f for f in files if f.lower().endswith(('.mkv', '.mp4', '.mov'))]
 
-        for video_file in video_files:
-            video_path = os.path.join(directory, video_file)
-            base_name = os.path.splitext(video_file)[0]
+        if multicam_config and multicam_config.enabled and multicam_config.tracks:
+            prefixes = [t['prefix'] for t in multicam_config.tracks]
 
-            # Look for matching EDL file (try both "name.edl" and "name_chapters.edl")
-            edl_path = None
-            for suffix in ['.edl', '_chapters.edl']:
-                candidate = os.path.join(directory, base_name + suffix)
-                if os.path.exists(candidate):
-                    edl_path = candidate
-                    break
+            # Separate main files from spectator files
+            main_files = []
+            spec_files: Dict[str, List[str]] = {}  # prefix -> list of filenames
 
-            if edl_path:
-                session = self.parse_session(video_path, edl_path)
-                if session:
-                    sessions.append(session)
+            for vf in video_files:
+                matched_prefix = None
+                for prefix in prefixes:
+                    if vf.lower().startswith(prefix.lower()):
+                        matched_prefix = prefix
+                        break
+                if matched_prefix:
+                    spec_files.setdefault(matched_prefix, []).append(vf)
+                else:
+                    main_files.append(vf)
+
+            # For each main file, find matching spec files by timestamp/suffix
+            for video_file in main_files:
+                video_path = os.path.join(directory, video_file)
+                base_name = os.path.splitext(video_file)[0]
+
+                # Look for matching EDL file
+                edl_path = None
+                for suffix in ['.edl', '_chapters.edl']:
+                    candidate = os.path.join(directory, base_name + suffix)
+                    if os.path.exists(candidate):
+                        edl_path = candidate
+                        break
+
+                if edl_path:
+                    session = self.parse_session(video_path, edl_path)
+                    if session:
+                        # Match spectator files by comparing the non-prefix part
+                        main_suffix = self._extract_suffix(video_file)
+                        for prefix in prefixes:
+                            for sf in spec_files.get(prefix, []):
+                                spec_suffix = self._extract_suffix(sf, prefix)
+                                if spec_suffix == main_suffix:
+                                    track = next((t for t in multicam_config.tracks
+                                                 if t['prefix'] == prefix), None)
+                                    session.multicam_files.append({
+                                        'prefix': prefix,
+                                        'file': os.path.join(directory, sf),
+                                        'cameraNumber': track['cameraNumber'] if track else 0
+                                    })
+                        sessions.append(session)
+        else:
+            # Non-multicam logic (original)
+            for video_file in video_files:
+                video_path = os.path.join(directory, video_file)
+                base_name = os.path.splitext(video_file)[0]
+
+                # Look for matching EDL file (try both "name.edl" and "name_chapters.edl")
+                edl_path = None
+                for suffix in ['.edl', '_chapters.edl']:
+                    candidate = os.path.join(directory, base_name + suffix)
+                    if os.path.exists(candidate):
+                        edl_path = candidate
+                        break
+
+                if edl_path:
+                    session = self.parse_session(video_path, edl_path)
+                    if session:
+                        sessions.append(session)
 
         return sessions
+
+    def _extract_suffix(self, filename: str, prefix: str = "") -> str:
+        """Extract the part of filename after the prefix for matching.
+
+        e.g. 'spec1_2026-01-15 13-09-49.mkv' with prefix 'spec1' -> '_2026-01-15 13-09-49'
+             '2026-01-15 13-09-49.mkv' with prefix '' -> '2026-01-15 13-09-49'
+        """
+        base = os.path.splitext(filename)[0]
+        if prefix and base.lower().startswith(prefix.lower()):
+            return base[len(prefix):]
+        return base
 
     def parse_session(self, video_file: str, edl_file: str) -> Optional[Session]:
         """
@@ -586,7 +661,7 @@ class BulkScanner:
 
     def session_to_dict(self, session: Session) -> Dict:
         """Convert Session to dict for JSON serialization."""
-        return {
+        d = {
             'id': session.id,
             'videoFile': session.video_file,
             'edlFile': session.edl_file,
@@ -594,3 +669,6 @@ class BulkScanner:
             'duration': session.duration,
             'markerSummary': session.marker_summary
         }
+        if session.multicam_files:
+            d['multicamFiles'] = session.multicam_files
+        return d

@@ -10,7 +10,8 @@ import {
   BatchProgress,
   TimelineInfo,
   DEFAULT_BULK_SETTINGS,
-  DEFAULT_SILENCE_REMOVAL_SETTINGS
+  DEFAULT_SILENCE_REMOVAL_SETTINGS,
+  DEFAULT_MULTICAM_CONFIG
 } from '../types/bulk';
 import { loadPersistedSettings, savePersistedSettings } from './usePersistedSettings';
 
@@ -65,6 +66,10 @@ export const useBulkImport = () => {
       silenceRemoval: {
         ...DEFAULT_SILENCE_REMOVAL_SETTINGS,
         ...(persisted.silenceRemoval || {})
+      },
+      multicam: {
+        ...DEFAULT_MULTICAM_CONFIG,
+        ...(persisted.multicam || {})
       }
     };
   });
@@ -78,6 +83,7 @@ export const useBulkImport = () => {
       skipBlackClips: settings.skipBlackClips,
       createTimelines: settings.createTimelines,
       silenceRemoval: settings.silenceRemoval,
+      multicam: settings.multicam,
     });
   }, [settings]);
 
@@ -146,7 +152,11 @@ export const useBulkImport = () => {
       const response = await fetch(`${API_BASE_URL}/bulk/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceFolder, recursive })
+        body: JSON.stringify({
+          sourceFolder,
+          recursive,
+          multicam: settings.multicam
+        })
       });
 
       const data: BulkScanResponse = await response.json();
@@ -193,7 +203,7 @@ export const useBulkImport = () => {
     } finally {
       setIsScanning(false);
     }
-  }, []);
+  }, [settings.multicam]);
 
   // Analyze a single session
   const analyzeSession = useCallback(async (sessionId: string) => {

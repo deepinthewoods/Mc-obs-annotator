@@ -206,11 +206,93 @@ class TimelineCreator:
 
         return added
 
+    def create_multicam_timeline(
+        self,
+        timeline_name: str,
+        main_clips: List[Any],
+        angle_clips: Dict[int, List[Any]],
+        track_names: Dict[int, str],
+    ) -> Optional[Any]:
+        """Create a timeline with clips stacked on separate video tracks.
+
+        V1 = main camera clips
+        V2 = camera 2 clips (at same positions)
+        V3 = camera 3 clips
+        ...
+
+        User then right-clicks in Media Pool -> Convert Timeline to Multicam Clip.
+
+        Args:
+            timeline_name: Name for the timeline
+            main_clips: MediaPoolItems for main camera
+            angle_clips: cameraNumber -> list of MediaPoolItems
+            track_names: cameraNumber -> display name (e.g. "Spectator 1")
+
+        Returns:
+            Timeline object or None
+        """
+        timeline = self.media_pool.CreateEmptyTimeline(timeline_name)
+        if not timeline:
+            return None
+
+        # Add main camera clips on V1
+        for clip in main_clips:
+            self.media_pool.AppendToTimeline([{
+                "mediaPoolItem": clip,
+                "trackIndex": 1
+            }])
+
+        # Add each angle's clips on subsequent tracks
+        for cam_num in sorted(angle_clips.keys()):
+            track_idx = cam_num  # cameraNumber 2 -> V2, etc.
+            for clip in angle_clips[cam_num]:
+                self.media_pool.AppendToTimeline([{
+                    "mediaPoolItem": clip,
+                    "trackIndex": track_idx
+                }])
+
+        # Try to rename tracks (may not be supported in all Resolve versions)
+        try:
+            timeline.SetTrackName("video", 1, "Main")
+            for cam_num, name in track_names.items():
+                timeline.SetTrackName("video", cam_num, name)
+        except Exception:
+            pass
+
+        return timeline
+
+    def _separate_multicam_clips(self, folder: str, multicam_prefixes: List[str]
+                                  ) -> tuple:
+        """Separate main clips from multicam angle clips in a folder.
+
+        Returns:
+            (main_files, angle_files_by_prefix) where:
+            - main_files: sorted list of main clip paths
+            - angle_files_by_prefix: dict of prefix -> sorted list of angle clip paths
+        """
+        all_files = self._get_sorted_clips(folder)
+        main_files = []
+        angle_files: Dict[str, List[str]] = {p: [] for p in multicam_prefixes}
+
+        for f in all_files:
+            basename = os.path.basename(f)
+            matched = False
+            for prefix in multicam_prefixes:
+                if basename.lower().startswith(prefix.lower() + '_'):
+                    angle_files[prefix].append(f)
+                    matched = True
+                    break
+            if not matched:
+                main_files.append(f)
+
+        return main_files, angle_files
+
     def create_session_timelines(
         self,
         session_folder: str,
         session_name: str,
-        chapter_buffer: float = 0.5
+        chapter_buffer: float = 0.5,
+        multicam_config=None
     ) -> List[Dict]:
         """
         Create all timelines for a session's extracted clips.
@@ -346,18 +428,34 @@ class TimelineCreator:
                         "duration": self._format_duration(duration)
                     })
 
+        # Determine multicam prefixes and track mapping
+        multicam_prefixes = []
+        multicam_track_map = {}  # prefix -> {"cameraNumber": N, "trackName": "..."}
+        if multicam_config and multicam_config.get('enabled') and multicam_config.get('tracks'):
+            for t in multicam_config['tracks']:
+                multicam_prefixes.append(t['prefix'])
+                multicam_track_map[t['prefix']] = {
+                    'cameraNumber': t['cameraNumber'],
+                    'trackName': t.get('trackName', f"Camera {t['cameraNumber']}")
+                }
+
         # 3. Import and create Recording timelines
         recordings_folder = os.path.join(session_folder, "recordings")
         if os.path.isdir(recordings_folder):
-            recording_files = self._get_sorted_clips(recordings_folder)
+            if multicam_prefixes:
+                main_rec_files, angle_rec_files = self._separate_multicam_clips(
+                    recordings_folder, multicam_prefixes)
+            else:
+                main_rec_files = self._get_sorted_clips(recordings_folder)
+                angle_rec_files = {}
 
-            if recording_files:
+            if main_rec_files:
                 # Create recordings bin
                 recordings_bin = self.media_pool.AddSubFolder(session_bin, "Recordings")
                 if recordings_bin:
                     self.media_pool.SetCurrentFolder(recordings_bin)
 
-                for i, recording_file in enumerate(recording_files, 1):
+                for i, recording_file in enumerate(main_rec_files, 1):
                     items = self.media_pool.ImportMedia([recording_file])
                     if items:
                         # Check sidecar for silence data
@@ -398,18 +496,61 @@ class TimelineCreator:
                                     "duration": self._format_duration(duration)
                                 })
 
-        # 3. Import and create POI timelines
+                # Create multicam stacked timelines for recordings
+                if multicam_prefixes and any(angle_rec_files.get(p) for p in multicam_prefixes):
+                    multicam_bin = self.media_pool.AddSubFolder(session_bin, "Multicam Timelines")
+                    if multicam_bin:
+                        self.media_pool.SetCurrentFolder(multicam_bin)
+
+                    # Import all angle clips
+                    for i, main_file in enumerate(main_rec_files, 1):
+                        main_items = self.media_pool.ImportMedia([main_file])
+                        if not main_items:
+                            continue
+
+                        # Find matching angle clips (same index)
+                        angle_items_by_cam = {}
+                        track_names = {}
+                        for prefix, info in multicam_track_map.items():
+                            prefix_files = angle_rec_files.get(prefix, [])
+                            if i - 1 < len(prefix_files):
+                                angle_file = prefix_files[i - 1]
+                                a_items = self.media_pool.ImportMedia([angle_file])
+                                if a_items:
+                                    cam_num = info['cameraNumber']
+                                    angle_items_by_cam[cam_num] = a_items
+                                    track_names[cam_num] = info['trackName']
+
+                        if angle_items_by_cam:
+                            mc_timeline_name = f"{session_name} - Recording {i} (Multicam)"
+                            mc_timeline = self.create_multicam_timeline(
+                                mc_timeline_name, main_items, angle_items_by_cam, track_names)
+                            if mc_timeline:
+                                duration = self._get_timeline_duration(mc_timeline)
+                                timelines_created.append({
+                                    "name": mc_timeline_name,
+                                    "clips": 1 + len(angle_items_by_cam),
+                                    "duration": self._format_duration(duration),
+                                    "multicam": True
+                                })
+
+        # 4. Import and create POI timelines
         pois_folder = os.path.join(session_folder, "pois")
         if os.path.isdir(pois_folder):
-            poi_files = self._get_sorted_clips(pois_folder)
+            if multicam_prefixes:
+                main_poi_files, angle_poi_files = self._separate_multicam_clips(
+                    pois_folder, multicam_prefixes)
+            else:
+                main_poi_files = self._get_sorted_clips(pois_folder)
+                angle_poi_files = {}
 
-            if poi_files:
+            if main_poi_files:
                 # Create POIs bin
                 pois_bin = self.media_pool.AddSubFolder(session_bin, "POIs")
                 if pois_bin:
                     self.media_pool.SetCurrentFolder(pois_bin)
 
-                for i, poi_file in enumerate(poi_files, 1):
+                for i, poi_file in enumerate(main_poi_files, 1):
                     items = self.media_pool.ImportMedia([poi_file])
                     if items:
                         timeline_name = f"{session_name} - POI {i}"
@@ -421,6 +562,42 @@ class TimelineCreator:
                                 "clips": 1,
                                 "duration": self._format_duration(duration)
                             })
+
+                # Create multicam stacked timelines for POIs
+                if multicam_prefixes and any(angle_poi_files.get(p) for p in multicam_prefixes):
+                    multicam_bin = self.media_pool.AddSubFolder(session_bin, "Multicam Timelines")
+                    if multicam_bin:
+                        self.media_pool.SetCurrentFolder(multicam_bin)
+
+                    for i, main_file in enumerate(main_poi_files, 1):
+                        main_items = self.media_pool.ImportMedia([main_file])
+                        if not main_items:
+                            continue
+
+                        angle_items_by_cam = {}
+                        track_names = {}
+                        for prefix, info in multicam_track_map.items():
+                            prefix_files = angle_poi_files.get(prefix, [])
+                            if i - 1 < len(prefix_files):
+                                angle_file = prefix_files[i - 1]
+                                a_items = self.media_pool.ImportMedia([angle_file])
+                                if a_items:
+                                    cam_num = info['cameraNumber']
+                                    angle_items_by_cam[cam_num] = a_items
+                                    track_names[cam_num] = info['trackName']
+
+                        if angle_items_by_cam:
+                            mc_timeline_name = f"{session_name} - POI {i} (Multicam)"
+                            mc_timeline = self.create_multicam_timeline(
+                                mc_timeline_name, main_items, angle_items_by_cam, track_names)
+                            if mc_timeline:
+                                duration = self._get_timeline_duration(mc_timeline)
+                                timelines_created.append({
+                                    "name": mc_timeline_name,
+                                    "clips": 1 + len(angle_items_by_cam),
+                                    "duration": self._format_duration(duration),
+                                    "multicam": True
+                                })
 
         return timelines_created
 

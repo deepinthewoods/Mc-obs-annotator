@@ -10,6 +10,17 @@ export interface MarkerSummary {
   eventTypeCounts?: { [key: string]: number };
 }
 
+export interface MulticamTrack {
+  prefix: string;       // e.g. "spec1"
+  trackName: string;    // e.g. "Spectator 1" (display/Resolve track name)
+  cameraNumber: number; // 2-9 (1 is always main)
+}
+
+export interface MulticamConfig {
+  enabled: boolean;
+  tracks: MulticamTrack[];
+}
+
 export interface Session {
   id: string;
   videoFile: string;
@@ -17,6 +28,7 @@ export interface Session {
   videoSize: number;
   duration: number;
   markerSummary: MarkerSummary;
+  multicamFiles?: { prefix: string; file: string; cameraNumber: number }[];
 }
 
 export interface ClipRegion {
@@ -36,6 +48,7 @@ export interface ClipRegions {
 export interface BulkScanRequest {
   sourceFolder: string;
   recursive?: boolean;
+  multicam?: MulticamConfig;
 }
 
 export interface BulkScanResponse {
@@ -110,6 +123,7 @@ export interface BulkSettings {
   createTimelines: boolean;
   enabledEventTypes: string[];
   silenceRemoval: SilenceRemovalSettings;
+  multicam: MulticamConfig;
 }
 
 export interface BulkProcessAllRequest {
@@ -213,11 +227,17 @@ export const DEFAULT_SILENCE_REMOVAL_SETTINGS: SilenceRemovalSettings = {
   maxSilenceForReset: 15.0
 };
 
+export const DEFAULT_MULTICAM_CONFIG: MulticamConfig = {
+  enabled: false,
+  tracks: []
+};
+
 export const DEFAULT_BULK_SETTINGS: BulkSettings = {
   chapterBuffer: 0.5,
   mergeOverlapping: true,
   skipBlackClips: true,
   createTimelines: true,
   enabledEventTypes: [],
-  silenceRemoval: { ...DEFAULT_SILENCE_REMOVAL_SETTINGS }
+  silenceRemoval: { ...DEFAULT_SILENCE_REMOVAL_SETTINGS },
+  multicam: { ...DEFAULT_MULTICAM_CONFIG }
 };

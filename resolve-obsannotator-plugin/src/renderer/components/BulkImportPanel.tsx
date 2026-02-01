@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useBulkImport } from '../hooks/useBulkImport';
-import { Session, SilenceRemovalSettings } from '../types/bulk';
+import { Session, SilenceRemovalSettings, MulticamTrack } from '../types/bulk';
 import { loadPersistedSettings, savePersistedSettings } from '../hooks/usePersistedSettings';
 
 interface BulkImportPanelProps {
@@ -272,6 +272,114 @@ export const BulkImportPanel: React.FC<BulkImportPanelProps> = ({ isConnected })
           )}
         </div>
 
+        {/* Multicam Cameras */}
+        <div className="bulk-settings">
+          <h3>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={bulkImport.settings.multicam.enabled}
+                onChange={(e) => bulkImport.updateSettings({
+                  multicam: { ...bulkImport.settings.multicam, enabled: e.target.checked }
+                })}
+              />
+              Multicam Cameras
+            </label>
+          </h3>
+          {bulkImport.settings.multicam.enabled && (
+            <div className="settings-grid">
+              <div className="info-text" style={{ marginBottom: '8px' }}>
+                Main video (no prefix) is always Camera 1. Map filename prefixes to additional cameras.
+              </div>
+              {bulkImport.settings.multicam.tracks.map((track, index) => (
+                <div key={index} className="setting-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={track.prefix}
+                    onChange={(e) => {
+                      const newTracks = [...bulkImport.settings.multicam.tracks];
+                      newTracks[index] = { ...newTracks[index], prefix: e.target.value };
+                      bulkImport.updateSettings({
+                        multicam: { ...bulkImport.settings.multicam, tracks: newTracks }
+                      });
+                    }}
+                    placeholder="prefix"
+                    className="inline-input"
+                    style={{ width: '80px' }}
+                  />
+                  <input
+                    type="text"
+                    value={track.trackName}
+                    onChange={(e) => {
+                      const newTracks = [...bulkImport.settings.multicam.tracks];
+                      newTracks[index] = { ...newTracks[index], trackName: e.target.value };
+                      bulkImport.updateSettings({
+                        multicam: { ...bulkImport.settings.multicam, tracks: newTracks }
+                      });
+                    }}
+                    placeholder="Track Name"
+                    className="inline-input"
+                    style={{ width: '120px' }}
+                  />
+                  <span className="info-text">Cam</span>
+                  <input
+                    type="number"
+                    value={track.cameraNumber}
+                    onChange={(e) => {
+                      const newTracks = [...bulkImport.settings.multicam.tracks];
+                      newTracks[index] = { ...newTracks[index], cameraNumber: parseInt(e.target.value) || 2 };
+                      bulkImport.updateSettings({
+                        multicam: { ...bulkImport.settings.multicam, tracks: newTracks }
+                      });
+                    }}
+                    min={2}
+                    max={9}
+                    className="inline-input"
+                    style={{ width: '50px' }}
+                  />
+                  <button
+                    onClick={() => {
+                      const newTracks = bulkImport.settings.multicam.tracks.filter((_, i) => i !== index);
+                      bulkImport.updateSettings({
+                        multicam: { ...bulkImport.settings.multicam, tracks: newTracks }
+                      });
+                    }}
+                    className="clear-button"
+                    style={{ padding: '2px 6px' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const nextCam = bulkImport.settings.multicam.tracks.length > 0
+                    ? Math.max(...bulkImport.settings.multicam.tracks.map(t => t.cameraNumber)) + 1
+                    : 2;
+                  const newTrack: MulticamTrack = {
+                    prefix: `spec${nextCam - 1}`,
+                    trackName: `Spectator ${nextCam - 1}`,
+                    cameraNumber: nextCam
+                  };
+                  bulkImport.updateSettings({
+                    multicam: {
+                      ...bulkImport.settings.multicam,
+                      tracks: [...bulkImport.settings.multicam.tracks, newTrack]
+                    }
+                  });
+                }}
+                className="browse-button"
+                style={{ marginTop: '4px' }}
+              >
+                + Add Track
+              </button>
+              <div className="info-text" style={{ marginTop: '8px' }}>
+                After import, right-click timeline in Media Pool &rarr; "Convert Timeline to Multicam Clip" for Speed Editor.
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Event Type Filter */}
         {Object.keys(bulkImport.availableEventTypes).length > 0 && (
           <div className="bulk-settings">
@@ -346,6 +454,11 @@ export const BulkImportPanel: React.FC<BulkImportPanelProps> = ({ isConnected })
                     )}
                     {session.markerSummary.pois > 0 && (
                       <span className="marker-badge pois">{session.markerSummary.pois} POIs</span>
+                    )}
+                    {session.multicamFiles && session.multicamFiles.length > 0 && (
+                      <span className="marker-badge" title={session.multicamFiles.map(f => f.prefix).join(', ')}>
+                        Multicam: {session.multicamFiles.length + 1} angles
+                      </span>
                     )}
                   </div>
                 </div>
