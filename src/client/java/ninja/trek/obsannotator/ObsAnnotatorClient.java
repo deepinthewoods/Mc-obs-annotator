@@ -1,6 +1,7 @@
 package ninja.trek.obsannotator;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
@@ -62,6 +63,19 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 			TestModeHandler.register();
 			System.out.println("[OBS Annotator] TEST MODE ACTIVE");
 		}
+
+		// Register shutdown handler to stop recording when game closes
+		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+			System.out.println("[OBS Annotator] Game closing, stopping recording if active");
+			stopRecordingIfActive();
+			if (WS_CLIENT != null) {
+				try {
+					WS_CLIENT.closeBlocking();
+				} catch (Exception e) {
+					System.err.println("[OBS Annotator] Error closing WebSocket: " + e.getMessage());
+				}
+			}
+		});
 
 		System.out.println("[OBS Annotator] Initialized successfully");
 	}
