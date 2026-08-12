@@ -10,6 +10,7 @@ import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
 import ninja.trek.obsannotator.events.*;
 import ninja.trek.obsannotator.websocket.ObsWebSocketClient;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWWindowFocusCallback;
 
 public class ObsAnnotatorClient implements ClientModInitializer {
 	public static ObsAnnotatorConfig CONFIG;
@@ -29,9 +30,9 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	private static KeyMapping keyNewSection;
 
 	// Auto recording state tracking
-	private boolean wasInWorld = false;
-	private boolean wasWindowFocused = false;
 	private boolean isRecording = false;
+	private boolean focusCallbackRegistered = false;
+	private GLFWWindowFocusCallback previousFocusCallback;
 
 	@Override
 	public void onInitializeClient() {
@@ -198,34 +199,46 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		});
 	}
 
+	private void ensureFocusCallbackRegistered(net.minecraft.client.Minecraft client) {
+		if (focusCallbackRegistered) return;
+		focusCallbackRegistered = true;
+
+		long windowHandle = client.getWindow().handle();
+		// Chain with Minecraft's existing focus callback so its behavior is preserved
+		previousFocusCallback = GLFW.glfwSetWindowFocusCallback(windowHandle, null);
+		GLFW.glfwSetWindowFocusCallback(windowHandle, (window, focused) -> {
+			if (previousFocusCallback != null) {
+				previousFocusCallback.invoke(window, focused);
+			}
+			// Handle focus change immediately - fires even when ticks are paused
+			if (CONFIG.enableAutoRecording) {
+				boolean inWorld = client.player != null && client.level != null;
+				if (!focused && isRecording && inWorld) {
+					stopRecordingIfActive();
+				} else if (focused && !isRecording && inWorld) {
+					startRecordingIfNotAlready();
+				}
+			}
+		});
+		System.out.println("[OBS Annotator] Registered GLFW focus callback for auto-recording");
+	}
+
 	private void updateAutoRecording(net.minecraft.client.Minecraft client) {
+		ensureFocusCallbackRegistered(client);
+
 		boolean inWorld = client.player != null && client.level != null;
-		boolean windowFocused = client.isWindowActive();
+		boolean windowFocused = GLFW.glfwGetWindowAttrib(
+			client.getWindow().handle(), GLFW.GLFW_FOCUSED
+		) == GLFW.GLFW_TRUE;
 
-		// Detect state changes
-		boolean justJoinedWorld = inWorld && !wasInWorld;
-		boolean justLeftWorld = !inWorld && wasInWorld;
-		boolean justLostFocus = inWorld && !windowFocused && wasWindowFocused;
-		boolean justGainedFocus = inWorld && windowFocused && !wasWindowFocused;
+		// Desired-state approach: ensure recording matches expected state each tick
+		boolean shouldRecord = inWorld && windowFocused;
 
-		// Handle state transitions
-		if (justJoinedWorld && windowFocused) {
-			// Player joined world with window focused - start recording
+		if (shouldRecord && !isRecording) {
 			startRecordingIfNotAlready();
-		} else if (justLeftWorld) {
-			// Player left world - stop recording
+		} else if (!shouldRecord && isRecording) {
 			stopRecordingIfActive();
-		} else if (justLostFocus) {
-			// Alt-tabbed out while in world - stop recording
-			stopRecordingIfActive();
-		} else if (justGainedFocus) {
-			// Alt-tabbed back in while in world - start new recording
-			startRecordingIfNotAlready();
 		}
-
-		// Update previous state
-		wasInWorld = inWorld;
-		wasWindowFocused = windowFocused;
 	}
 
 	private void startRecordingIfNotAlready() {
