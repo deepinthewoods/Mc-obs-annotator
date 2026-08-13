@@ -3,7 +3,7 @@ package ninja.trek.obsannotator;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
@@ -133,37 +133,37 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	}
 
 	private void registerKeybindings() {
-		keyStart = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+		keyStart = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.obsannotator.start",
 			GLFW.GLFW_KEY_KP_1,
 			KEYBIND_CATEGORY
 		));
 
-		keyEnd = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+		keyEnd = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.obsannotator.end",
 			GLFW.GLFW_KEY_KP_3,
 			KEYBIND_CATEGORY
 		));
 
-		keyPoi1m = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+		keyPoi1m = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.obsannotator.poi_1m",
 			GLFW.GLFW_KEY_KP_7,
 			KEYBIND_CATEGORY
 		));
 
-		keyPoi3m = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+		keyPoi3m = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.obsannotator.poi_3m",
 			GLFW.GLFW_KEY_KP_8,
 			KEYBIND_CATEGORY
 		));
 
-		keyPoi5m = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+		keyPoi5m = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.obsannotator.poi_5m",
 			GLFW.GLFW_KEY_KP_9,
 			KEYBIND_CATEGORY
 		));
 
-		keyNewSection = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+		keyNewSection = KeyMappingHelper.registerKeyMapping(new KeyMapping(
 			"key.obsannotator.new_section",
 			GLFW.GLFW_KEY_KP_2,
 			KEYBIND_CATEGORY

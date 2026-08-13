@@ -58,7 +58,7 @@ public class InteractionEventHandler {
             return;
         }
 
-        boolean inCraftingScreen = client.screen instanceof CraftingScreen || client.screen instanceof InventoryScreen;
+        boolean inCraftingScreen = client.gui.screen() instanceof CraftingScreen || client.gui.screen() instanceof InventoryScreen;
 
         if (inCraftingScreen) {
             AbstractContainerMenu menu = client.player.containerMenu;
@@ -89,7 +89,7 @@ public class InteractionEventHandler {
             return;
         }
 
-        boolean inMerchantScreen = client.screen instanceof MerchantScreen;
+        boolean inMerchantScreen = client.gui.screen() instanceof MerchantScreen;
 
         if (inMerchantScreen) {
             AbstractContainerMenu menu = client.player.containerMenu;
@@ -120,7 +120,7 @@ public class InteractionEventHandler {
             return;
         }
 
-        boolean inEnchantmentScreen = client.screen instanceof EnchantmentScreen;
+        boolean inEnchantmentScreen = client.gui.screen() instanceof EnchantmentScreen;
 
         if (inEnchantmentScreen) {
             AbstractContainerMenu menu = client.player.containerMenu;

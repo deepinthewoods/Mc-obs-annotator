@@ -1,7 +1,7 @@
 {
 	"required": true,
 	"package": "ninja.trek.obsannotator.mixin.client",
-	"compatibilityLevel": "JAVA_21",
+	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"ClientAdvancementsAccessor",
 		"ClientboundExplodePacketMixin"
