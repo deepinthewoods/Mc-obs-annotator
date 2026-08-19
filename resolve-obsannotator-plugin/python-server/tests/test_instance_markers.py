@@ -8,7 +8,7 @@ PYTHON_SERVER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PYTHON_SERVER not in sys.path:
     sys.path.insert(0, PYTHON_SERVER)
 
-from bulk_scanner import BulkScanner
+from bulk_scanner import BulkScanner, ScanSettings
 from edl_parser import EdlParser
 from marker_filter import MarkerFilter
 
@@ -67,6 +67,17 @@ class InstanceMarkerParserTests(unittest.TestCase):
         self.assertEqual([marker["text"] for marker in legacy], ["Start"])
         self.assertEqual([marker["instance"] for marker in searched], ["Main"])
 
+    def test_structured_camera_marker_payload_is_exposed(self):
+        markers = self.parse_edl(edl_event(
+            1,
+            "01:00:00:00",
+            "[Instance: Camera] Camera - version=1;mode=timelapse;seq=7;render=42;expectedFrames=1"
+        ))
+
+        self.assertEqual(markers[0]["type"], "Camera")
+        self.assertEqual(markers[0]["structured"]["mode"], "timelapse")
+        self.assertEqual(markers[0]["structured"]["expectedFrames"], "1")
+
 
 class InstanceMarkerBulkScannerTests(unittest.TestCase):
     def test_start_end_pairs_do_not_cross_instances(self):
@@ -86,6 +97,32 @@ class InstanceMarkerBulkScannerTests(unittest.TestCase):
             (1.0, 3.0),
             (2.0, 4.0),
         ])
+
+    def test_camera_markers_create_regions_without_becoming_chapters(self):
+        scanner = BulkScanner()
+        markers = [
+            {
+                "timestampSeconds": 0.0,
+                "text": "Camera - version=1;mode=timelapse",
+                "type": "Camera",
+                "structured": {"mode": "timelapse", "seq": "1", "render": "100",
+                               "expectedFrames": "1", "node": "node-1"}
+            },
+            {
+                "timestampSeconds": 1.0 / 30.0,
+                "text": "Camera - version=1;mode=normal",
+                "type": "Camera",
+                "structured": {"mode": "normal", "seq": "2", "render": "101"}
+            }
+        ]
+
+        regions = scanner.build_clip_regions(markers, ScanSettings(), 30.0)
+
+        self.assertEqual(regions.chapters, [])
+        self.assertEqual([region.mode for region in regions.camera_modes], ["timelapse", "normal"])
+        self.assertEqual(regions.camera_modes[0].actual_frames, 1)
+        self.assertEqual(regions.camera_modes[0].render_frames, 1)
+        self.assertFalse([item for item in regions.camera_diagnostics if item.severity == "warning"])
 
 
 if __name__ == "__main__":

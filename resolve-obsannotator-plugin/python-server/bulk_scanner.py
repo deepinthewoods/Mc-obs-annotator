@@ -39,6 +39,38 @@ class CategorizedMarkers:
     pois: List[Dict]  # POI markers (e.g. "POI 1m", "POI 3m", "POI 5m")
     falls: List[Dict]  # "Fall Landed" markers
     new_section_markers: List[Dict] = field(default_factory=list)  # "New Section" markers
+    camera_markers: List[Dict] = field(default_factory=list)
+    timelapse_build_markers: List[Dict] = field(default_factory=list)
+
+
+@dataclass
+class CameraRegion:
+    """A camera-mode span reconstructed from consecutive director markers."""
+    start: float
+    end: float
+    mode: str
+    node_id: Optional[str] = None
+    build_id: Optional[str] = None
+    build_mode: Optional[str] = None
+    expected_frames: Optional[int] = None
+    actual_frames: Optional[int] = None
+    render_frames: Optional[int] = None
+    marker_sequence: Optional[int] = None
+    render_sequence: Optional[int] = None
+    open_ended: bool = False
+
+
+@dataclass
+class CameraDiagnostic:
+    """A recoverable marker timing or lifecycle issue for editor review."""
+    code: str
+    severity: str
+    message: str
+    timestamp: float
+    node_id: Optional[str] = None
+    build_id: Optional[str] = None
+    expected_frames: Optional[int] = None
+    actual_frames: Optional[int] = None
 
 
 @dataclass
@@ -48,6 +80,9 @@ class ClipRegions:
     recordings: List[ClipRegion] = field(default_factory=list)
     pois: List[ClipRegion] = field(default_factory=list)
     falls: List[ClipRegion] = field(default_factory=list)
+    camera_modes: List[CameraRegion] = field(default_factory=list)
+    camera_diagnostics: List[CameraDiagnostic] = field(default_factory=list)
+    timelapse_build_events: List[Dict] = field(default_factory=list)
 
 
 @dataclass
@@ -66,6 +101,7 @@ class Session:
     edl_file: str
     video_size: int = 0
     duration: float = 0.0
+    framerate: float = 30.0
     markers: List[Dict] = field(default_factory=list)
     marker_summary: Dict = field(default_factory=dict)
     clip_regions: Optional[ClipRegions] = None
@@ -251,6 +287,8 @@ class BulkScanner:
                 'startEndPairs': min(len(categorized.start_markers), len(categorized.end_markers)),
                 'pois': len(categorized.pois),
                 'falls': len(categorized.falls),
+                'cameraMarkers': len(categorized.camera_markers),
+                'timelapseBuildMarkers': len(categorized.timelapse_build_markers),
                 'eventTypeCounts': event_type_counts
             }
 
@@ -260,6 +298,7 @@ class BulkScanner:
                 edl_file=edl_file,
                 video_size=video_size,
                 duration=duration,
+                framerate=result.get('framerate', 30.0),
                 markers=markers,
                 marker_summary=marker_summary
             )
@@ -286,13 +325,20 @@ class BulkScanner:
         pois = []
         falls = []
         new_section_markers = []
+        camera_markers = []
+        timelapse_build_markers = []
 
         for marker in markers:
             marker_type = marker.get('type', '').strip().lower()
             marker_text = marker.get('text', '').strip().lower()
 
+            # Director/build markers are analysis metadata, not extractable chapters.
+            if marker_type == 'camera':
+                camera_markers.append(marker)
+            elif marker_type == 'timelapse build':
+                timelapse_build_markers.append(marker)
             # Check for Start/End markers
-            if marker_type == 'start' or marker_text == 'start':
+            elif marker_type == 'start' or marker_text == 'start':
                 start_markers.append(marker)
             elif marker_type == 'end' or marker_text == 'end':
                 end_markers.append(marker)
@@ -315,10 +361,13 @@ class BulkScanner:
             end_markers=end_markers,
             pois=pois,
             falls=falls,
-            new_section_markers=new_section_markers
+            new_section_markers=new_section_markers,
+            camera_markers=camera_markers,
+            timelapse_build_markers=timelapse_build_markers
         )
 
-    def build_clip_regions(self, markers: List[Dict], settings: ScanSettings) -> ClipRegions:
+    def build_clip_regions(self, markers: List[Dict], settings: ScanSettings,
+                           framerate: float = 30.0) -> ClipRegions:
         """
         Build clip regions from markers based on extraction rules.
 
@@ -363,12 +412,228 @@ class BulkScanner:
             settings.fall_buffer_extra
         )
 
+        camera_regions, camera_diagnostics = self._build_camera_regions(
+            categorized.camera_markers,
+            framerate
+        )
+        build_events, build_diagnostics = self._build_timelapse_build_events(
+            categorized.timelapse_build_markers
+        )
+
         return ClipRegions(
             chapters=chapter_regions,
             recordings=recording_regions,
             pois=poi_regions,
-            falls=fall_regions
+            falls=fall_regions,
+            camera_modes=camera_regions,
+            camera_diagnostics=camera_diagnostics + build_diagnostics,
+            timelapse_build_events=build_events
         )
+
+    def _build_camera_regions(
+        self,
+        camera_markers: List[Dict],
+        framerate: float
+    ) -> Tuple[List[CameraRegion], List[CameraDiagnostic]]:
+        """Reconstruct mode spans and flag one-frame marker discrepancies."""
+        markers = sorted(camera_markers, key=lambda marker: marker['timestampSeconds'])
+        regions = []
+        diagnostics = []
+        fps = framerate if framerate > 0 else 30.0
+        previous_sequence = None
+        previous_render = None
+
+        for index, marker in enumerate(markers):
+            payload = marker.get('structured') or {}
+            mode = payload.get('mode', '').lower()
+            timestamp = marker['timestampSeconds']
+            if mode not in ('normal', 'face', 'timelapse'):
+                diagnostics.append(CameraDiagnostic(
+                    code='invalid_camera_marker',
+                    severity='warning',
+                    message=f"Camera marker has unknown mode '{mode or 'missing'}'",
+                    timestamp=timestamp,
+                    node_id=payload.get('node'),
+                    build_id=payload.get('build')
+                ))
+                continue
+
+            sequence = self._optional_int(payload.get('seq'))
+            render_sequence = self._optional_int(payload.get('render'))
+            expected_frames = self._optional_int(payload.get('expectedFrames'))
+            if mode == 'timelapse' and expected_frames is None:
+                expected_frames = 1
+
+            if sequence is not None and previous_sequence is not None \
+                    and sequence != previous_sequence + 1:
+                diagnostics.append(CameraDiagnostic(
+                    code='camera_sequence_gap',
+                    severity='warning',
+                    message=f"Camera marker sequence jumped from {previous_sequence} to {sequence}",
+                    timestamp=timestamp,
+                    node_id=payload.get('node'),
+                    build_id=payload.get('build')
+                ))
+            if render_sequence is not None and previous_render is not None \
+                    and render_sequence <= previous_render:
+                diagnostics.append(CameraDiagnostic(
+                    code='non_monotonic_render_sequence',
+                    severity='warning',
+                    message=f"Render sequence did not advance after {previous_render}",
+                    timestamp=timestamp,
+                    node_id=payload.get('node'),
+                    build_id=payload.get('build')
+                ))
+
+            next_marker = markers[index + 1] if index + 1 < len(markers) else None
+            end = next_marker['timestampSeconds'] if next_marker else timestamp
+            actual_frames = max(0, round((end - timestamp) * fps)) if next_marker else None
+            next_payload = next_marker.get('structured') or {} if next_marker else {}
+            next_render = self._optional_int(next_payload.get('render'))
+            render_frames = (next_render - render_sequence) \
+                if render_sequence is not None and next_render is not None else None
+
+            region = CameraRegion(
+                start=timestamp,
+                end=end,
+                mode=mode,
+                node_id=payload.get('node'),
+                build_id=payload.get('build'),
+                build_mode=payload.get('buildMode'),
+                expected_frames=expected_frames,
+                actual_frames=actual_frames,
+                render_frames=render_frames,
+                marker_sequence=sequence,
+                render_sequence=render_sequence,
+                open_ended=next_marker is None
+            )
+            regions.append(region)
+
+            if mode == 'timelapse':
+                if next_marker is None:
+                    diagnostics.append(CameraDiagnostic(
+                        code='missing_camera_return_marker',
+                        severity='warning',
+                        message='Timelapse marker has no following camera-mode marker',
+                        timestamp=timestamp,
+                        node_id=payload.get('node'),
+                        build_id=payload.get('build'),
+                        expected_frames=expected_frames
+                    ))
+                else:
+                    if render_frames is not None and render_frames != expected_frames:
+                        diagnostics.append(CameraDiagnostic(
+                            code='render_frame_span_mismatch',
+                            severity='warning',
+                            message=f"Timelapse spans {render_frames} render frames; expected {expected_frames}",
+                            timestamp=timestamp,
+                            node_id=payload.get('node'),
+                            build_id=payload.get('build'),
+                            expected_frames=expected_frames,
+                            actual_frames=render_frames
+                        ))
+                    if actual_frames != expected_frames:
+                        diagnostics.append(CameraDiagnostic(
+                            code='marker_timecode_span_mismatch',
+                            severity='warning',
+                            message=(f"EDL markers span {actual_frames} frames at {fps:g} fps; "
+                                     f"expected {expected_frames}"),
+                            timestamp=timestamp,
+                            node_id=payload.get('node'),
+                            build_id=payload.get('build'),
+                            expected_frames=expected_frames,
+                            actual_frames=actual_frames
+                        ))
+
+            if sequence is not None:
+                previous_sequence = sequence
+            if render_sequence is not None:
+                previous_render = render_sequence
+
+        return regions, diagnostics
+
+    def _build_timelapse_build_events(
+        self,
+        markers: List[Dict]
+    ) -> Tuple[List[Dict], List[CameraDiagnostic]]:
+        """Normalize golem lifecycle markers and validate reconstructable transitions."""
+        events = []
+        diagnostics = []
+        lifecycle_by_build = {}
+        allowed_transitions = {
+            'start': {'pause', 'complete', 'stop'},
+            'resume': {'pause', 'complete', 'stop'},
+            'pause': {'resume', 'stop'},
+            'complete': set(),
+            'stop': set()
+        }
+
+        for marker in sorted(markers, key=lambda item: item['timestampSeconds']):
+            payload = marker.get('structured') or {}
+            timestamp = marker['timestampSeconds']
+            state = payload.get('state', '').lower()
+            build_id = payload.get('build')
+            node_id = payload.get('node')
+            if state not in allowed_transitions or not build_id:
+                diagnostics.append(CameraDiagnostic(
+                    code='invalid_build_marker',
+                    severity='warning',
+                    message='Timelapse build marker is missing a valid state or build id',
+                    timestamp=timestamp,
+                    node_id=node_id,
+                    build_id=build_id
+                ))
+                continue
+
+            previous = lifecycle_by_build.get(build_id)
+            if previous and state not in allowed_transitions[previous['state']]:
+                diagnostics.append(CameraDiagnostic(
+                    code='invalid_build_transition',
+                    severity='warning',
+                    message=f"Build state changed from {previous['state']} to {state}",
+                    timestamp=timestamp,
+                    node_id=node_id,
+                    build_id=build_id
+                ))
+            if previous and previous.get('nodeId') and node_id and previous['nodeId'] != node_id:
+                diagnostics.append(CameraDiagnostic(
+                    code='build_node_changed',
+                    severity='warning',
+                    message='Build session changed timelapse node id',
+                    timestamp=timestamp,
+                    node_id=node_id,
+                    build_id=build_id
+                ))
+
+            event = {
+                'timestamp': timestamp,
+                'state': state,
+                'buildId': build_id,
+                'nodeId': node_id,
+                'buildMode': payload.get('mode')
+            }
+            events.append(event)
+            lifecycle_by_build[build_id] = event
+
+        for build_id, event in lifecycle_by_build.items():
+            if event['state'] in ('start', 'resume'):
+                diagnostics.append(CameraDiagnostic(
+                    code='open_build_session',
+                    severity='info',
+                    message='Build session has no pause, completion, or stop marker before the EDL ends',
+                    timestamp=event['timestamp'],
+                    node_id=event.get('nodeId'),
+                    build_id=build_id
+                ))
+
+        return events, diagnostics
+
+    @staticmethod
+    def _optional_int(value) -> Optional[int]:
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
 
     def _build_chapter_regions(
         self,
@@ -612,7 +877,7 @@ class BulkScanner:
             return None
 
         # Build clip regions
-        clip_regions = self.build_clip_regions(session.markers, settings)
+        clip_regions = self.build_clip_regions(session.markers, settings, session.framerate)
         session.clip_regions = clip_regions
 
         # Calculate estimates
@@ -637,7 +902,11 @@ class BulkScanner:
                 'chapters': [self._region_to_dict(r) for r in clip_regions.chapters],
                 'recordings': [self._region_to_dict(r) for r in clip_regions.recordings],
                 'pois': [self._region_to_dict(r) for r in clip_regions.pois],
-                'falls': [self._region_to_dict(r) for r in clip_regions.falls]
+                'falls': [self._region_to_dict(r) for r in clip_regions.falls],
+                'cameraModes': [self._camera_region_to_dict(r) for r in clip_regions.camera_modes],
+                'cameraDiagnostics': [self._camera_diagnostic_to_dict(d)
+                                      for d in clip_regions.camera_diagnostics],
+                'timelapseBuildEvents': clip_regions.timelapse_build_events
             },
             'estimatedOutputSize': self._format_size(estimated_output_size),
             'estimatedReduction': f"{reduction_percent:.0f}%"
@@ -652,6 +921,34 @@ class BulkScanner:
             'type': region.region_type,
             'label': region.label,
             'markerOffset': region.marker_offset
+        }
+
+    def _camera_region_to_dict(self, region: CameraRegion) -> Dict:
+        return {
+            'start': region.start,
+            'end': region.end,
+            'mode': region.mode,
+            'nodeId': region.node_id,
+            'buildId': region.build_id,
+            'buildMode': region.build_mode,
+            'expectedFrames': region.expected_frames,
+            'actualFrames': region.actual_frames,
+            'renderFrames': region.render_frames,
+            'markerSequence': region.marker_sequence,
+            'renderSequence': region.render_sequence,
+            'openEnded': region.open_ended
+        }
+
+    def _camera_diagnostic_to_dict(self, diagnostic: CameraDiagnostic) -> Dict:
+        return {
+            'code': diagnostic.code,
+            'severity': diagnostic.severity,
+            'message': diagnostic.message,
+            'timestamp': diagnostic.timestamp,
+            'nodeId': diagnostic.node_id,
+            'buildId': diagnostic.build_id,
+            'expectedFrames': diagnostic.expected_frames,
+            'actualFrames': diagnostic.actual_frames
         }
 
     def _format_size(self, size_bytes: int) -> str:
@@ -670,6 +967,7 @@ class BulkScanner:
             'edlFile': session.edl_file,
             'videoSize': session.video_size,
             'duration': session.duration,
+            'framerate': session.framerate,
             'markerSummary': session.marker_summary
         }
         if session.multicam_files:

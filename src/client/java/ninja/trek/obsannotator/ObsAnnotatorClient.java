@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
@@ -12,6 +13,7 @@ import ninja.trek.obsannotator.websocket.ObsWebSocketClient;
 import org.lwjgl.glfw.GLFW;
 
 public class ObsAnnotatorClient implements ClientModInitializer {
+	public static final String ANNOTATION_SENDER_KEY = "obsannotator:annotation-sender-v1";
 	public static ObsAnnotatorConfig CONFIG;
 	public static ObsWebSocketClient WS_CLIENT;
 	public static EventTracker EVENT_TRACKER;
@@ -39,6 +41,8 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 
 		// Initialize WebSocket client
 		initWebSocket();
+		FabricLoader.getInstance().getObjectShare().put(ANNOTATION_SENDER_KEY,
+			(java.util.function.Function<String, Boolean>) ObsAnnotatorClient::trySendAnnotation);
 
 		// Register keybindings
 		registerKeybindings();
@@ -235,8 +239,17 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 	}
 
 	public static void sendAnnotation(String text) {
-		if (WS_CLIENT != null && WS_CLIENT.isAuthenticated()) {
-			WS_CLIENT.sendAnnotation(text);
+		trySendAnnotation(text);
+	}
+
+	/**
+	 * Optional-integration entry point used by secondary camera mods.
+	 * @return true when the annotation was handed to an authenticated OBS socket
+	 */
+	public static boolean trySendAnnotation(String text) {
+		if (text == null || text.isBlank() || WS_CLIENT == null || !WS_CLIENT.isAuthenticated()) {
+			return false;
 		}
+		return WS_CLIENT.sendAnnotation(text);
 	}
 }

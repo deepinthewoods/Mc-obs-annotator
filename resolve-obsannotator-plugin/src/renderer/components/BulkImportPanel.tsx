@@ -455,12 +455,48 @@ export const BulkImportPanel: React.FC<BulkImportPanelProps> = ({ isConnected })
                     {session.markerSummary.pois > 0 && (
                       <span className="marker-badge pois">{session.markerSummary.pois} POIs</span>
                     )}
+                    {(session.markerSummary.cameraMarkers || 0) > 0 && (
+                      <span className="marker-badge" title="Normal, face, and one-frame timelapse camera regions">
+                        {session.markerSummary.cameraMarkers} camera markers
+                      </span>
+                    )}
+                    {(session.markerSummary.timelapseBuildMarkers || 0) > 0 && (
+                      <span className="marker-badge" title="Gold Golem timelapse lifecycle markers">
+                        {session.markerSummary.timelapseBuildMarkers} build markers
+                      </span>
+                    )}
                     {session.multicamFiles && session.multicamFiles.length > 0 && (
                       <span className="marker-badge" title={session.multicamFiles.map(f => f.prefix).join(', ')}>
                         Multicam: {session.multicamFiles.length + 1} angles
                       </span>
                     )}
                   </div>
+                  {(session.markerSummary.cameraMarkers || 0) > 0 && (
+                    <button
+                      className="browse-button"
+                      disabled={bulkImport.isAnalyzing}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        bulkImport.analyzeSession(session.id).catch(() => undefined);
+                      }}
+                    >
+                      {bulkImport.analyzedSessions.has(session.id) ? 'Refresh camera scan' : 'Analyze cameras'}
+                    </button>
+                  )}
+                  {bulkImport.analyzedSessions.get(session.id)?.cameraModes && (
+                    <div className="session-details">
+                      Camera regions: {bulkImport.analyzedSessions.get(session.id)!.cameraModes!.length}
+                      {' | '}Build events: {bulkImport.analyzedSessions.get(session.id)!.timelapseBuildEvents?.length || 0}
+                      {' | '}Diagnostics: {bulkImport.analyzedSessions.get(session.id)!.cameraDiagnostics?.length || 0}
+                      {bulkImport.analyzedSessions.get(session.id)!.cameraDiagnostics
+                        ?.filter(diagnostic => diagnostic.severity === 'warning')
+                        .map((diagnostic, index) => (
+                          <div key={`${diagnostic.code}-${index}`} title={diagnostic.code}>
+                            {formatDuration(diagnostic.timestamp)}: {diagnostic.message}
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

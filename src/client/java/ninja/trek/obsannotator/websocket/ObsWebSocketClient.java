@@ -175,9 +175,9 @@ public class ObsWebSocketClient extends WebSocketClient {
         }
     }
 
-    public void sendAnnotation(String annotationText) {
+    public boolean sendAnnotation(String annotationText) {
         if (!authenticated || !isOpen()) {
-            return;
+            return false;
         }
 
         try {
@@ -207,8 +207,10 @@ public class ObsWebSocketClient extends WebSocketClient {
             request.add("d", requestData);
 
             send(GSON.toJson(request));
+            return true;
         } catch (Exception e) {
             System.err.println("[OBS Annotator] Failed to send annotation: " + e.getMessage());
+            return false;
         }
     }
 

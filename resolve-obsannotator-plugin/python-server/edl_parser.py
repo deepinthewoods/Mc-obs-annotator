@@ -132,6 +132,7 @@ class EdlParser:
         type_parts = text.split(' - ', 1)
         event_type = type_parts[0].strip() if len(type_parts) > 0 else "Unknown"
         event_subtype = type_parts[1].strip() if len(type_parts) > 1 else ""
+        structured = self._parse_structured_payload(event_type, event_subtype)
 
         return {
             'id': event_num,
@@ -143,8 +144,22 @@ class EdlParser:
             'instance': instance,
             'type': event_type,
             'subtype': event_subtype,
+            'structured': structured,
             'duration': duration
         }
+
+    @staticmethod
+    def _parse_structured_payload(event_type: str, event_subtype: str) -> Optional[Dict]:
+        """Parse Craneshot's versioned semicolon key/value marker payloads."""
+        if event_type.strip().lower() not in ('camera', 'timelapse build'):
+            return None
+
+        values = {}
+        for part in event_subtype.split(';'):
+            key, separator, value = part.strip().partition('=')
+            if separator and key:
+                values[key.strip()] = value.strip()
+        return values or None
 
     @classmethod
     def _split_instance_tag(cls, text: str):

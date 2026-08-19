@@ -7,6 +7,9 @@ export interface MarkerSummary {
   chapters: number;
   startEndPairs: number;
   pois: number;
+  falls?: number;
+  cameraMarkers?: number;
+  timelapseBuildMarkers?: number;
   eventTypeCounts?: { [key: string]: number };
 }
 
@@ -27,6 +30,7 @@ export interface Session {
   edlFile: string;
   videoSize: number;
   duration: number;
+  framerate?: number;
   markerSummary: MarkerSummary;
   multicamFiles?: { prefix: string; file: string; cameraNumber: number }[];
 }
@@ -35,7 +39,7 @@ export interface ClipRegion {
   start: number;
   end: number;
   markers: string[];
-  type: 'chapter' | 'recording' | 'poi';
+  type: 'chapter' | 'recording' | 'poi' | 'fall';
   label: string;
 }
 
@@ -43,6 +47,44 @@ export interface ClipRegions {
   chapters: ClipRegion[];
   recordings: ClipRegion[];
   pois: ClipRegion[];
+  falls?: ClipRegion[];
+  cameraModes?: CameraModeRegion[];
+  cameraDiagnostics?: CameraDiagnostic[];
+  timelapseBuildEvents?: TimelapseBuildEvent[];
+}
+
+export interface CameraModeRegion {
+  start: number;
+  end: number;
+  mode: 'normal' | 'face' | 'timelapse';
+  nodeId?: string;
+  buildId?: string;
+  buildMode?: string;
+  expectedFrames?: number;
+  actualFrames?: number;
+  renderFrames?: number;
+  markerSequence?: number;
+  renderSequence?: number;
+  openEnded: boolean;
+}
+
+export interface CameraDiagnostic {
+  code: string;
+  severity: 'info' | 'warning';
+  message: string;
+  timestamp: number;
+  nodeId?: string;
+  buildId?: string;
+  expectedFrames?: number;
+  actualFrames?: number;
+}
+
+export interface TimelapseBuildEvent {
+  timestamp: number;
+  state: 'start' | 'pause' | 'resume' | 'complete' | 'stop';
+  buildId: string;
+  nodeId?: string;
+  buildMode?: string;
 }
 
 export interface BulkScanRequest {
