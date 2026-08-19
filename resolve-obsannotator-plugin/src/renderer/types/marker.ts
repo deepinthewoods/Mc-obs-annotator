@@ -3,7 +3,9 @@ export interface Marker {
   timecode: string;
   timestampSeconds: number;
   color: string | null;
+  rawText: string;
   text: string;
+  instance: string | null;
   type: string;
   subtype: string;
   duration: number;
@@ -13,6 +15,7 @@ export interface MarkerFilter {
   search?: string;
   exclude?: string;
   eventTypes?: string[];
+  instances?: string[];
   timeRangeStart?: number;
   timeRangeEnd?: number;
 }

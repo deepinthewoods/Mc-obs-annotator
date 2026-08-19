@@ -23,7 +23,10 @@
   "config.obsannotator.obsHost": "OBS Host",
   "config.obsannotator.obsPort": "OBS Port",
   "config.obsannotator.obsPassword": "OBS Password",
-  "config.obsannotator.enableAutoRecording": "Enable Auto Recording",
+  "config.obsannotator.instanceName": "Minecraft Instance Name",
+  "config.obsannotator.instanceName.tooltip": "Unique tag for this client, such as Main or Camera. Craneshot followers are tagged automatically from their follower index. Leave blank to create legacy untagged markers on non-followers.",
+  "config.obsannotator.enableAutoRecording": "Automatically Control OBS Recording",
+  "config.obsannotator.enableAutoRecording.tooltip": "Enable on only one Minecraft instance. Craneshot followers automatically ignore this setting. Recording follows whether the controlling instance is in a world and is not affected by window focus.",
   "config.obsannotator.enableSectionMarker": "Enable Section Marker",
 
   "config.obsannotator.enableCombatEvents": "Enable Combat Events",

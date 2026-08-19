@@ -6,6 +6,7 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
     search: '',
     exclude: '',
     eventTypes: [],
+    instances: [],
     timeRangeStart: undefined,
     timeRangeEnd: undefined,
   });
@@ -22,7 +23,8 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
         m =>
           m.text.toLowerCase().includes(searchTerm) ||
           m.type.toLowerCase().includes(searchTerm) ||
-          m.subtype.toLowerCase().includes(searchTerm)
+          m.subtype.toLowerCase().includes(searchTerm) ||
+          (m.instance || 'Untagged').toLowerCase().includes(searchTerm)
       );
     }
 
@@ -33,7 +35,8 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
         m =>
           !m.text.toLowerCase().includes(excludeTerm) &&
           !m.type.toLowerCase().includes(excludeTerm) &&
-          !m.subtype.toLowerCase().includes(excludeTerm)
+          !m.subtype.toLowerCase().includes(excludeTerm) &&
+          !(m.instance || 'Untagged').toLowerCase().includes(excludeTerm)
       );
     }
 
@@ -41,6 +44,12 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
     if (filters.eventTypes && filters.eventTypes.length > 0) {
       const allowedTypes = new Set(filters.eventTypes);
       result = result.filter(m => allowedTypes.has(m.text));
+    }
+
+    // Minecraft instance filter. Older EDLs are grouped as Untagged.
+    if (filters.instances && filters.instances.length > 0) {
+      const allowedInstances = new Set(filters.instances);
+      result = result.filter(m => allowedInstances.has(m.instance || 'Untagged'));
     }
 
     // Time range filter
@@ -61,6 +70,12 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
     return Array.from(types).sort();
   }, [allMarkers]);
 
+  const instances = useMemo(() => {
+    const values = new Set<string>();
+    allMarkers.forEach(m => values.add(m.instance || 'Untagged'));
+    return Array.from(values).sort();
+  }, [allMarkers]);
+
   const filteredStatistics = useMemo(() => {
     const stats: { [key: string]: number } = {};
     filteredMarkers.forEach(marker => {
@@ -78,6 +93,7 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
       search: '',
       exclude: '',
       eventTypes: [],
+      instances: [],
       timeRangeStart: undefined,
       timeRangeEnd: undefined,
     });
@@ -112,6 +128,7 @@ export const useMarkerFilter = (allMarkers: Marker[]) => {
     filteredMarkers,
     filteredStatistics,
     eventTypes,
+    instances,
     selectedMarkerIds,
     selectedMarkers,
     updateFilter,

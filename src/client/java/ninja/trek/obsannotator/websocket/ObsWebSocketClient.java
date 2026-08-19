@@ -2,6 +2,7 @@ package ninja.trek.obsannotator.websocket;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import ninja.trek.obsannotator.CraneshotIntegration;
 import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
@@ -180,6 +181,9 @@ public class ObsWebSocketClient extends WebSocketClient {
         }
 
         try {
+            String instanceName = resolveInstanceName();
+            String markerText = formatMarkerText(annotationText, instanceName);
+
             JsonObject request = new JsonObject();
             request.addProperty("op", 6); // Request opcode
 
@@ -192,8 +196,11 @@ public class ObsWebSocketClient extends WebSocketClient {
             requestDataInner.addProperty("requestType", "setChapterMarker");
 
             JsonObject vendorRequest = new JsonObject();
-            vendorRequest.addProperty("chapterName", annotationText);
-            vendorRequest.addProperty("chapterSource", "Minecraft");
+            vendorRequest.addProperty("chapterName", markerText);
+            vendorRequest.addProperty(
+                "chapterSource",
+                instanceName.isEmpty() ? "Minecraft" : "Minecraft/" + instanceName
+            );
 
             requestDataInner.add("requestData", vendorRequest);
             requestData.add("requestData", requestDataInner);
@@ -203,6 +210,35 @@ public class ObsWebSocketClient extends WebSocketClient {
         } catch (Exception e) {
             System.err.println("[OBS Annotator] Failed to send annotation: " + e.getMessage());
         }
+    }
+
+    private String resolveInstanceName() {
+        String followerName = CraneshotIntegration.getFollowerInstanceName();
+        return sanitizeInstanceName(followerName != null ? followerName : config.instanceName);
+    }
+
+    private static String sanitizeInstanceName(String instanceName) {
+        if (instanceName == null) {
+            return "";
+        }
+
+        // Avoid breaking the machine-readable tag or StreamUP's pipe-delimited
+        // EDL metadata while keeping ordinary human-readable names intact.
+        return instanceName
+            .replace('\r', ' ')
+            .replace('\n', ' ')
+            .replace(']', ' ')
+            .replace('|', ' ')
+            .trim()
+            .replaceAll("\\s+", " ");
+    }
+
+    private static String formatMarkerText(String annotationText, String instanceName) {
+        String text = annotationText == null ? "" : annotationText.trim();
+        if (instanceName.isEmpty() || text.startsWith("[Instance:")) {
+            return text;
+        }
+        return "[Instance: " + instanceName + "] " + text;
     }
 
     public boolean isAuthenticated() {

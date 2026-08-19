@@ -77,13 +77,47 @@ The mod creates a configuration file at `.minecraft/config/obsannotator.json` on
 {
   "obsHost": "localhost",
   "obsPort": 4455,
-  "obsPassword": ""
+  "obsPassword": "",
+  "instanceName": "Main",
+  "enableAutoRecording": true
 }
 ```
 
 - **obsHost**: The host where OBS WebSocket is running (default: localhost)
 - **obsPort**: The WebSocket port (default: 4455)
 - **obsPassword**: OBS WebSocket password if authentication is enabled
+- **instanceName**: A unique, human-readable name for this Minecraft client. Markers are written as `[Instance: Main] ...`. Leave it blank for legacy untagged markers.
+- **enableAutoRecording**: Starts recording when this client enters a world and stops when it leaves. Enable this on at most one Minecraft instance; focus changes do not stop the shared recording.
+
+If a process is launched with Craneshot's `-Dcraneshot.follower=<index>` JVM property, OBS Annotator detects it automatically. That process still sends annotations, tagged as `[Instance: Craneshot Follower <index>]`, but it never starts or stops OBS recording—even if it shares a config file where `enableAutoRecording` is `true`.
+
+### Multiple Minecraft Instances, One OBS Recording
+
+Each Minecraft process can connect to the same OBS WebSocket server. Use a separate launcher/game directory for each process so each has its own `config/obsannotator.json`, then configure unique names:
+
+Main Minecraft instance:
+
+```json
+{
+  "instanceName": "Main",
+  "enableAutoRecording": true
+}
+```
+
+Second-camera Minecraft instance:
+
+```json
+{
+  "instanceName": "Camera",
+  "enableAutoRecording": false
+}
+```
+
+When Craneshot launches the second camera with a follower property such as `-Dcraneshot.follower=0`, the explicit `Camera` name is replaced by the automatic `Craneshot Follower 0` tag and `enableAutoRecording` is ignored for that process. This means a Craneshot follower can safely share the main client's configuration.
+
+Both clients send annotations throughout the same wide recording. Only the `Main` client controls recording in this example. You can instead set `enableAutoRecording` to `false` in both clients and control recording from OBS.
+
+The instance prefix is intentionally stored in the chapter name because StreamUP has one marker timeline for the shared OBS recording. The Resolve companion parser separates that prefix into `instance` metadata while preserving the original event text for existing filters and bulk-extraction rules.
 
 ### Event Toggles
 

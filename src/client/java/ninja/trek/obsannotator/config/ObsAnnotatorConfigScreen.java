@@ -38,9 +38,16 @@ public class ObsAnnotatorConfigScreen {
                 .setSaveConsumer(val -> config.obsPassword = val)
                 .build());
 
+        general.addEntry(entry.startStrField(Component.translatable("config.obsannotator.instanceName"), config.instanceName)
+                .setDefaultValue(defaults.instanceName)
+                .setSaveConsumer(val -> config.instanceName = val)
+                .setTooltip(Component.translatable("config.obsannotator.instanceName.tooltip"))
+                .build());
+
         general.addEntry(entry.startBooleanToggle(Component.translatable("config.obsannotator.enableAutoRecording"), config.enableAutoRecording)
                 .setDefaultValue(defaults.enableAutoRecording)
                 .setSaveConsumer(val -> config.enableAutoRecording = val)
+                .setTooltip(Component.translatable("config.obsannotator.enableAutoRecording.tooltip"))
                 .build());
 
         general.addEntry(entry.startBooleanToggle(Component.translatable("config.obsannotator.enableSectionMarker"), config.enableSectionMarker)

@@ -15,6 +15,7 @@ class MarkerFilter:
                 'search': str (optional),
                 'exclude': str (optional),
                 'eventTypes': List[str] (optional),
+                'instances': List[str] (optional; "Untagged" for legacy markers),
                 'timeRangeStart': float (optional),
                 'timeRangeEnd': float (optional)
             }
@@ -31,7 +32,8 @@ class MarkerFilter:
                 m for m in filtered
                 if search_term in m['text'].lower() or
                    search_term in m['type'].lower() or
-                   search_term in m['subtype'].lower()
+                   search_term in m['subtype'].lower() or
+                   search_term in (m.get('instance') or 'Untagged').lower()
             ]
 
         # Exclude filter
@@ -41,7 +43,8 @@ class MarkerFilter:
                 m for m in filtered
                 if exclude_term not in m['text'].lower() and
                    exclude_term not in m['type'].lower() and
-                   exclude_term not in m['subtype'].lower()
+                   exclude_term not in m['subtype'].lower() and
+                   exclude_term not in (m.get('instance') or 'Untagged').lower()
             ]
 
         # Event type filter (match on full text e.g. "Combat - Player Death")
@@ -50,6 +53,14 @@ class MarkerFilter:
             filtered = [
                 m for m in filtered
                 if m['text'] in allowed_types
+            ]
+
+        # Minecraft instance filter. Legacy recordings have no instance tag.
+        if filters.get('instances'):
+            allowed_instances = set(filters['instances'])
+            filtered = [
+                m for m in filtered
+                if (m.get('instance') or 'Untagged') in allowed_instances
             ]
 
         # Time range filter

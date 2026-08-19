@@ -163,6 +163,7 @@ export const App: React.FC = () => {
                 <FilterPanel
                   filters={markerFilter.filters}
                   eventTypes={markerFilter.eventTypes}
+                  instances={markerFilter.instances}
                   statistics={markerFilter.filteredStatistics}
                   maxTimestamp={maxTimestamp}
                   onFilterChange={markerFilter.updateFilter}

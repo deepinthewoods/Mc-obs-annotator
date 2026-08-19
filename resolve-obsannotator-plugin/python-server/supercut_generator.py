@@ -119,7 +119,7 @@ class SupercutGenerator:
                     timeline.AddMarker(
                         frameId=beat_frame,
                         color=marker.get('color', 'Blue'),
-                        name=marker['text'],
+                        name=marker.get('rawText', marker['text']),
                         note=f"Beat {clips_added}",
                         duration=1
                     )

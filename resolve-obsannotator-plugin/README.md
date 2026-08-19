@@ -6,7 +6,7 @@ A powerful companion plugin for DaVinci Resolve that works with the ObsAnnotator
 
 This plugin allows you to:
 - **Preview Markers** - See all markers from EDL files before importing
-- **Filter Markers** - Search, exclude, filter by type, and time range
+- **Filter Markers** - Search, exclude, filter by Minecraft instance, type, and time range
 - **Import Selectively** - Only import the markers you want
 - **Generate BPM Supercuts** - Auto-generate beat-synced montages
 - **Color Coding** - Auto-assign colors by event type
@@ -146,11 +146,13 @@ npm start
 ### Filter Panel
 - **Text Search** - Find markers containing specific text
 - **Exclude Filter** - Exclude markers with specific text
+- **Minecraft Instance Selection** - Isolate Main, Camera, or legacy Untagged markers
 - **Event Type Selection** - Choose which event types to show
 - **Time Range Slider** - Filter by timeline position
 
 ### Marker List
 - Sortable table view
+- Minecraft instance column
 - Color indicators
 - Checkbox selection
 - Select all / Clear selection

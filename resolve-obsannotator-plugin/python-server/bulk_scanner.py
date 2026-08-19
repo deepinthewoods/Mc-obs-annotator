@@ -564,14 +564,17 @@ class BulkScanner:
 
         for end_marker in ends:
             end_time = end_marker['timestampSeconds']
+            end_instance = end_marker.get('instance')
 
-            # Find the most recent Start marker before this End
+            # Find the most recent Start marker before this End from the same
+            # Minecraft instance. Legacy untagged markers pair with each other.
             best_start = None
             for start_marker in reversed(starts):
                 start_time = start_marker['timestampSeconds']
                 start_id = id(start_marker)
 
-                if start_time < end_time and start_id not in used_starts:
+                if (start_marker.get('instance') == end_instance and
+                        start_time < end_time and start_id not in used_starts):
                     best_start = start_marker
                     break
 

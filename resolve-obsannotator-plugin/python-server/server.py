@@ -194,12 +194,17 @@ def import_markers():
         imported_count = 0
         for marker in markers:
             frame = int(marker['timestampSeconds'] * framerate)
+            instance = marker.get('instance')
+            marker_name = marker.get('rawText', marker['text'])
+            marker_note = f"{marker['type']} - {marker['subtype']}"
+            if instance:
+                marker_note = f"Instance: {instance}\n{marker_note}"
 
             success = timeline.AddMarker(
                 frameId=frame,
                 color=marker.get('color', 'Blue'),
-                name=marker['text'],
-                note=f"{marker['type']} - {marker['subtype']}",
+                name=marker_name,
+                note=marker_note,
                 duration=marker.get('duration', 1)
             )
 

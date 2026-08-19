@@ -4,6 +4,7 @@ import { MarkerFilter } from '../types/marker';
 interface FilterPanelProps {
   filters: MarkerFilter;
   eventTypes: string[];
+  instances: string[];
   statistics: { [key: string]: number };
   maxTimestamp: number;
   onFilterChange: (key: keyof MarkerFilter, value: any) => void;
@@ -13,6 +14,7 @@ interface FilterPanelProps {
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
   eventTypes,
+  instances,
   statistics,
   maxTimestamp,
   onFilterChange,
@@ -24,6 +26,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       ? currentTypes.filter(t => t !== type)
       : [...currentTypes, type];
     onFilterChange('eventTypes', newTypes);
+  };
+
+  const handleInstanceToggle = (instance: string) => {
+    const currentInstances = filters.instances || [];
+    const newInstances = currentInstances.includes(instance)
+      ? currentInstances.filter(value => value !== instance)
+      : [...currentInstances, instance];
+    onFilterChange('instances', newInstances);
   };
 
   const formatTime = (seconds: number): string => {
@@ -85,6 +95,27 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             <span className="time-label">{formatTime(filters.timeRangeEnd || maxTimestamp)}</span>
           </div>
         </div>
+
+        {instances.length > 0 && (
+          <div className="event-types-section">
+            <label>Minecraft Instances:</label>
+            <div className="event-types-grid">
+              {instances.map(instance => {
+                const isSelected = !filters.instances || filters.instances.length === 0 || filters.instances.includes(instance);
+                return (
+                  <label key={instance} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleInstanceToggle(instance)}
+                    />
+                    {instance}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="event-types-section">
           <label>Event Types:</label>

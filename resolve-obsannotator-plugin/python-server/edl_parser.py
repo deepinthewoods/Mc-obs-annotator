@@ -5,6 +5,11 @@ from typing import List, Dict, Optional
 class EdlParser:
     """Parse CMX 3600 EDL files with Resolve marker extensions."""
 
+    INSTANCE_TAG_PATTERN = re.compile(
+        r'^\[Instance:\s*([^\]\r\n|]+)\]\s*(.+)$',
+        re.IGNORECASE
+    )
+
     def __init__(self):
         self.framerate = 30.0  # Default, can be overridden
 
@@ -115,7 +120,14 @@ class EdlParser:
         if not text:
             return None
 
-        # Parse event type and subtype from text
+        # New recordings use a human-readable, machine-parseable instance tag:
+        #   [Instance: Camera] EventType - EventSubtype
+        # Keep `text` normalized so every existing consumer continues to see
+        # the legacy event format, and preserve the OBS/EDL value as rawText.
+        raw_text = text
+        instance, text = self._split_instance_tag(text)
+
+        # Parse event type and subtype from normalized text
         # Format: "EventType - EventSubtype"
         type_parts = text.split(' - ', 1)
         event_type = type_parts[0].strip() if len(type_parts) > 0 else "Unknown"
@@ -127,15 +139,31 @@ class EdlParser:
             'timestampSeconds': self.timecode_to_seconds(timecode),
             'color': color,
             'text': text,
+            'rawText': raw_text,
+            'instance': instance,
             'type': event_type,
             'subtype': event_subtype,
             'duration': duration
         }
 
+    @classmethod
+    def _split_instance_tag(cls, text: str):
+        """Return (instance, legacy-compatible text) for an optional tag."""
+        match = cls.INSTANCE_TAG_PATTERN.match(text.strip())
+        if not match:
+            return None, text.strip()
+
+        instance = match.group(1).strip()
+        marker_text = match.group(2).strip()
+        if not instance or not marker_text:
+            return None, text.strip()
+        return instance, marker_text
+
     def _is_duplicate_marker(self, marker: Dict, seen_markers: set) -> bool:
         key = (
             marker['timecode'],
             marker['text'],
+            marker.get('instance'),
             marker.get('color'),
             marker.get('duration', 1)
         )

@@ -10,7 +10,6 @@ import ninja.trek.obsannotator.config.ObsAnnotatorConfig;
 import ninja.trek.obsannotator.events.*;
 import ninja.trek.obsannotator.websocket.ObsWebSocketClient;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWWindowFocusCallback;
 
 public class ObsAnnotatorClient implements ClientModInitializer {
 	public static ObsAnnotatorConfig CONFIG;
@@ -31,8 +30,6 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 
 	// Auto recording state tracking
 	private boolean isRecording = false;
-	private boolean focusCallbackRegistered = false;
-	private GLFWWindowFocusCallback previousFocusCallback;
 
 	@Override
 	public void onInitializeClient() {
@@ -64,6 +61,13 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 		if (TestModeHandler.isTestMode()) {
 			TestModeHandler.register();
 			System.out.println("[OBS Annotator] TEST MODE ACTIVE");
+		}
+
+		if (CraneshotIntegration.isFollower()) {
+			System.out.println(
+				"[OBS Annotator] Detected " + CraneshotIntegration.getFollowerInstanceName() +
+				"; annotations remain enabled and OBS recording control is disabled"
+			);
 		}
 
 		// Register shutdown handler to stop recording when game closes
@@ -192,47 +196,20 @@ public class ObsAnnotatorClient implements ClientModInitializer {
 				}
 			}
 
-			// Auto recording logic
-			if (CONFIG.enableAutoRecording) {
-				updateAutoRecording(client);
-			}
+			// Auto recording logic. This is always evaluated so disabling the
+			// setting while active cleanly relinquishes recording control.
+			updateAutoRecording(client);
 		});
-	}
-
-	private void ensureFocusCallbackRegistered(net.minecraft.client.Minecraft client) {
-		if (focusCallbackRegistered) return;
-		focusCallbackRegistered = true;
-
-		long windowHandle = client.getWindow().handle();
-		// Chain with Minecraft's existing focus callback so its behavior is preserved
-		previousFocusCallback = GLFW.glfwSetWindowFocusCallback(windowHandle, null);
-		GLFW.glfwSetWindowFocusCallback(windowHandle, (window, focused) -> {
-			if (previousFocusCallback != null) {
-				previousFocusCallback.invoke(window, focused);
-			}
-			// Handle focus change immediately - fires even when ticks are paused
-			if (CONFIG.enableAutoRecording) {
-				boolean inWorld = client.player != null && client.level != null;
-				if (!focused && isRecording && inWorld) {
-					stopRecordingIfActive();
-				} else if (focused && !isRecording && inWorld) {
-					startRecordingIfNotAlready();
-				}
-			}
-		});
-		System.out.println("[OBS Annotator] Registered GLFW focus callback for auto-recording");
 	}
 
 	private void updateAutoRecording(net.minecraft.client.Minecraft client) {
-		ensureFocusCallbackRegistered(client);
-
 		boolean inWorld = client.player != null && client.level != null;
-		boolean windowFocused = GLFW.glfwGetWindowAttrib(
-			client.getWindow().handle(), GLFW.GLFW_FOCUSED
-		) == GLFW.GLFW_TRUE;
 
-		// Desired-state approach: ensure recording matches expected state each tick
-		boolean shouldRecord = inWorld && windowFocused;
+		// A shared wide recording must survive focus changes between Minecraft
+		// windows. Craneshot followers annotate but never control OBS recording,
+		// even when they share the main instance's config file.
+		boolean shouldRecord = CONFIG.enableAutoRecording &&
+			!CraneshotIntegration.isFollower() && inWorld;
 
 		if (shouldRecord && !isRecording) {
 			startRecordingIfNotAlready();

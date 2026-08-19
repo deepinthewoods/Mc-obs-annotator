@@ -78,6 +78,7 @@ export const MarkerList: React.FC<MarkerListProps> = ({
                 />
               </th>
               <th>Time</th>
+              <th>Instance</th>
               <th>Color</th>
               <th>Type</th>
               <th>Description</th>
@@ -86,7 +87,7 @@ export const MarkerList: React.FC<MarkerListProps> = ({
           <tbody>
             {markers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="empty-message">
+                <td colSpan={6} className="empty-message">
                   No markers to display
                 </td>
               </tr>
@@ -104,6 +105,7 @@ export const MarkerList: React.FC<MarkerListProps> = ({
                     />
                   </td>
                   <td>{formatTimecode(marker.timestampSeconds)}</td>
+                  <td>{marker.instance || 'Untagged'}</td>
                   <td className="color-column">{getColorEmoji(marker.color)}</td>
                   <td>{marker.type}</td>
                   <td>{marker.subtype || marker.text}</td>

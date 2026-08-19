@@ -12,6 +12,7 @@ export interface FilterMarkersRequest {
     search?: string;
     exclude?: string;
     eventTypes?: string[];
+    instances?: string[];
     timeRangeStart?: number;
     timeRangeEnd?: number;
   };

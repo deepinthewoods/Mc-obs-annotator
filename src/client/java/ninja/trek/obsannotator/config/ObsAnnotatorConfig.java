@@ -20,6 +20,10 @@ public class ObsAnnotatorConfig {
     public int obsPort = 4455;
     public String obsPassword = "";
 
+    // Identifies this Minecraft process when multiple clients share one OBS recording.
+    // Set a different value in each launcher's instance directory (for example Main and Camera).
+    public String instanceName = "Main";
+
     // Auto Recording Settings
     public boolean enableAutoRecording = true;
 
